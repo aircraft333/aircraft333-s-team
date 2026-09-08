@@ -7,7 +7,7 @@
 \usepackage{graphics}
 
 
-\title{NIPT的时点选择与胎儿的异常判定}
+\title{基于统计建模的NIPT时点选择与胎儿异常判定}
 \tihao{C}
 \baominghao{121}
 \schoolname{上海交通大学}
@@ -23,7 +23,7 @@
 \maketitle
 
 \begin{abstract}
-            
+            随着医疗技术的进步，NIPT(Non-Invasive Prenatal Testing)作为一种无创产前检测技术，已经在临床中得到了广泛应用。然而，NIPT的准确性受到多种因素的影响，现有检测方法一方面忽略了孕妇的个体差异，另一方面过早检测会导致cfDNA浓度不足，而过晚检测则可能错过最佳干预时机。
             \keywords{关键词1\quad  关键词2\quad   关键词3}
         \end{abstract}
         \section{问题重述}
@@ -63,7 +63,7 @@
         针对问题四，需要综合考虑多染色体及其Z值、GC含量、读段数及相关比例、BMI等因素，建立异常判定模型。
         本文先进行单变量判别力（AUC）扫描，筛选出对女胎异常判定有显著影响的因素。然后采取Logistic 回归，计算混淆矩阵并确定操作阈值。在此基础上，由全量数据重训得到判定公式，通过Bootstrap 给出 AUC 95% 置信区间。
         \section{模型假设}
-
+        1.
         \section{符号说明}
         \begin{center}
             \begin{tabular}{cc}
