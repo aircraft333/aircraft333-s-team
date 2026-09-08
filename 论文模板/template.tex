@@ -1,0 +1,165 @@
+\documentclass[UTF8, a4paper, 12pt]{ctexart}
+
+% ==================== 1. 基础宏包 ====================
+\usepackage{amsmath, amssymb, amsfonts} % 数学公式
+\usepackage{graphicx}                 % 插图支持
+\usepackage{booktabs}                 % 学术三线表
+\usepackage{xcolor}                   % 颜色支持（代码高亮必需）
+\usepackage{float}                    % 浮动体精确定位 [H]
+\usepackage{geometry}                 % 页边距设置
+\usepackage{listings}                 % 代码块排版
+\usepackage{hyperref}                 % 超链接支持
+
+% 页边距合理设置
+\geometry{left=3cm, right=3cm, top=2.5cm, bottom=2.5cm}
+
+\pagestyle{plain} % 页眉页脚样式
+
+% ==================== 2. 工具配置 ====================
+% 安全的listings代码块配置
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    frame=single,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    numbers=left,
+    numberstyle=\tiny,
+    breaklines=true,
+    showstringspaces=false
+}
+
+% 修复版：安全的原生图片占位框（内部不打印含有潜在下划线的ID，彻底防止报错）
+\newcommand{\figureplaceholder}[2]{
+    \begin{figure}[H]
+        \centering
+        \framebox[10cm]{\rule{0pt}{4cm} \makebox[0pt]{[图片占位符: #2]}}
+        \caption{#2}
+        \label{fig:#1}
+    \end{figure}
+}
+
+% ==================== 3. 超链接 (放在最后加载) ====================
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=blue
+}
+
+% ==================== 4. 论文元数据 ====================
+\title{\textbf{此处输入您的论文题目}}
+\author{作者姓名}
+\date{\today}
+
+% ==================== 5. 正文开始 ====================
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+此处输入您的中文摘要内容。摘要应当简要说明研究的背景、目的、方法、主要结果和结论。
+
+\vspace{1em}
+\noindent\textbf{关键词：} 关键词1；关键词2；关键词3
+\end{abstract}
+
+\newpage
+\tableofcontents
+\newpage
+
+\section{问题重述}
+\subsection{问题背景}
+此处输入背景介绍...
+
+\subsection{需要解决的问题}
+\noindent\textbf{问题一}：具体描述...
+
+\noindent\textbf{问题二}：具体描述...
+
+\section{问题分析}
+\subsection{关于问题一的分析}
+分析内容...
+
+\subsection{关于问题二的分析}
+分析内容...
+
+\subsection{关于问题三的分析}
+分析内容...
+
+\section{模型假设}
+\begin{enumerate}
+    \item 假设一...
+    \item 假设二...
+\end{enumerate}
+
+\section{符号说明}
+\begin{table}[H]
+    \centering
+    \caption{主要符号物理含义}
+    \label{tab:symbols}
+    \begin{tabular}{ccc}
+        \toprule
+        \textbf{符号} & \textbf{含义} & \textbf{单位} \\
+        \midrule
+        $d$ & 厚度 & m \\
+        $n$ & 折射率 & / \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{模型的建立与求解}
+\subsection{公式推导}
+这里插入公式：
+\begin{equation}\label{eq1}
+    \begin{split}
+    F = ma\\
+    v = \frac{dx}{dt}
+    \end{split}
+\end{equation}
+正如公式\autoref{eq1}所示，力与加速度的关系是线性的。
+$$v=at$$
+我们还有一个公式
+\begin{equation}
+    E = mc^2
+\end{equation}
+
+\subsection{算法与伪代码描述}
+\begin{lstlisting}[language=Python]
+# Write your algorithm or pseudocode here
+def core_algorithm(input_data):
+    if input_data is not None:
+        return True
+    return False
+\end{lstlisting}
+
+\subsection{结果分析}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.6\textwidth]{相对路径（斜杠方向换一下）} % 替换为实际图片路径
+    \caption{示例图片说明}
+    \label{fig1}
+\end{figure}
+
+
+\section{模型评价}
+\subsection{优点}
+第一点优点...
+\subsection{缺点}
+第一点缺点...
+
+\begin{thebibliography}{99}
+    \bibitem{ref1} 相关文献...
+\end{thebibliography}
+
+\newpage
+\appendix
+\section{附录代码}
+\begin{lstlisting}[language=Python]
+# Python code example
+def calculate_thickness(wavelength, index):
+    return wavelength / (2 * index)
+\end{lstlisting}
+
+\end{document}

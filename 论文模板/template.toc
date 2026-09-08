@@ -1,0 +1,17 @@
+\contentsline {section}{\numberline {1}问题重述}{3}{section.1}%
+\contentsline {subsection}{\numberline {1.1}问题背景}{3}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}需要解决的问题}{3}{subsection.1.2}%
+\contentsline {section}{\numberline {2}问题分析}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}关于问题一的分析}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}关于问题二的分析}{3}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}关于问题三的分析}{3}{subsection.2.3}%
+\contentsline {section}{\numberline {3}模型假设}{3}{section.3}%
+\contentsline {section}{\numberline {4}符号说明}{3}{section.4}%
+\contentsline {section}{\numberline {5}模型的建立与求解}{4}{section.5}%
+\contentsline {subsection}{\numberline {5.1}公式推导}{4}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}算法与伪代码描述}{4}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}结果分析}{4}{subsection.5.3}%
+\contentsline {section}{\numberline {6}模型评价}{4}{section.6}%
+\contentsline {subsection}{\numberline {6.1}优点}{4}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}缺点}{4}{subsection.6.2}%
+\contentsline {section}{\numberline {A}附录代码}{5}{appendix.A}%
