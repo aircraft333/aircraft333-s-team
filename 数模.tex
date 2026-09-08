@@ -7,7 +7,7 @@
 \usepackage{graphics}
 
 
-\title{NIPT的时点选择与胎儿的异常判定}
+\title{基于统计建模的NIPT时点选择与胎儿异常判定}
 \tihao{C}
 \baominghao{121}
 \schoolname{上海交通大学}
@@ -23,7 +23,7 @@
 \maketitle
 
 \begin{abstract}
-            
+            随着医疗技术的进步，NIPT(Non-Invasive Prenatal Testing)作为一种无创产前检测技术，已经在临床中得到了广泛应用。然而，NIPT的准确性受到多种因素的影响，现有检测方法一方面忽略了孕妇的个体差异，另一方面过早检测会导致cfDNA浓度不足，而过晚检测则可能错过最佳干预时机。
             \keywords{关键词1\quad  关键词2\quad   关键词3}
         \end{abstract}
         \section{问题重述}
@@ -60,7 +60,7 @@
         针对问题三，在问题二的基础上，Y浓度达标时间还收多种因素（身高，体重，年龄）等影响，且需要结合检测误差，Y浓度达标比例，根据孕妇BMI，合理分组，综合测得每组的最佳NIPT时间点。
         本文方法紧承问题二，延用个体增长LLM，对达标时间做多因素回归模型，同时计算达标比例（考虑个体差异与检测误差）。分组方法与问题二类似，最后通过测量误差和达标保证水平的敏感性分析，得到模型的误差和稳健性。
         \section{模型假设}
-
+        1.
         \section{符号说明}
         \begin{center}
             \begin{tabular}{cc}
