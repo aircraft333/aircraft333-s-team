@@ -1,11 +1,11 @@
 # Fdb version 4
-["xdvipdfmx"] 1788851777.63796 "数模.xdv" "数模.pdf" "数模" 1788851778.89348 0
-  "数模.xdv" 1788851777 31948 ac633080ba8ce7c895ca9742b6f80af7 "xelatex"
+["xdvipdfmx"] 1788856834.0112 "数模.xdv" "数模.pdf" "数模" 1788856835.70393 0
+  "数模.xdv" 1788856833 58380 4a690db8e32021bcc8bb1101b4700dab "xelatex"
   (generated)
   "数模.pdf"
   (rewritten before read)
-["xelatex"] 1788851774.64806 "c:/Users/dell/Downloads/56RoZe4zc@c3A/C题/数模.tex" "数模.xdv" "数模" 1788851778.87803 0
-  "c:/Users/dell/Downloads/56RoZe4zc@c3A/C题/数模.tex" 1788851772 2676 f6a294d52b52fa273dc69a188641e08c ""
+["xelatex"] 1788856832.12923 "c:/Users/dell/Downloads/56RoZe4zc@c3A/C题/数模.tex" "数模.xdv" "数模" 1788856835.69835 0
+  "c:/Users/dell/Downloads/56RoZe4zc@c3A/C题/数模.tex" 1788856797 7246 7c07fc48c5b2a82089538a4f4efb987c ""
   "c:/Windows/Fonts/msyh.ttc" 1746978769 19704352 1e10e74402e59d54499af795caf0b135 ""
   "cumcmthesis.cls" 1788848619 25706 dc49b4444868be86e3debe73a2bcca01 ""
   "e:/texlive/2026/texmf-dist/fonts/map/fontname/texfonts.map" 1784125437 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -217,9 +217,10 @@
   "e:/texlive/2026/texmf-dist/web2c/texmf.cnf" 1784120162 43815 bcd8835056a2dfac260166a1c9541261 ""
   "e:/texlive/2026/texmf-var/web2c/xetex/xelatex.fmt" 1783788398 5961939 71513e1ee2e9ed76893f19ac0c1a6306 ""
   "e:/texlive/2026/texmf.cnf" 1783787998 713 e69b156964470283e0530f5060668171 ""
-  "数模.aux" 1788851777 3155 3d18cb8f67714cc2ce2e90848d247c8f "xelatex"
-  "数模.out" 1788851777 2806 ba3a2fc1d656774248ed906c594f5934 "xelatex"
-  "数模.tex" 1788851772 2676 f6a294d52b52fa273dc69a188641e08c ""
+  "figures_q1/fig1_corr_heatmap.png" 1788850575 99678 588dc8e57da7e47812252753ce86d717 ""
+  "数模.aux" 1788856833 3335 5e3c4b1531e41490b338ccc6c299e501 "xelatex"
+  "数模.out" 1788856833 2806 c03edf32522705e7281fc5ba5ae94a30 "xelatex"
+  "数模.tex" 1788856797 7246 7c07fc48c5b2a82089538a4f4efb987c ""
   (generated)
   "数模.aux"
   "数模.log"
