@@ -199,7 +199,46 @@ def significance_tests(d, lmm_ri):
 
 # ================= 5. 绘图 =================
 def plot_figures(d, lmm_ri):
-    # ---------- 图1: 每人轨迹(spaghetti) ----------
+    # ---------- 图1: 各指标相关性热力图 ----------
+    corr_cols = ["yconc", "gw", "bmi", "age", "height", "weight"]
+    corr_lab = ["Y染色体浓度", "孕周(周)", "BMI(kg/m²)", "年龄(岁)",
+                "身高(cm)", "体重(kg)"]
+    sub = d[corr_cols]
+    R = sub.corr()
+    # 成对 Pearson 检验 p 值（给显著性星号）
+    pv = R.copy().astype(float)
+    pv[:] = 1.0
+    for i in range(len(corr_cols)):
+        for j in range(len(corr_cols)):
+            if i != j:
+                pv.iloc[i, j] = stats.pearsonr(
+                    sub.iloc[:, i], sub.iloc[:, j])[1]
+    mask = np.triu(np.ones_like(R, dtype=bool), k=1)   # 掩掉对称上三角
+    fig, ax = plt.subplots(figsize=(9, 7.5))
+    im = ax.imshow(R, cmap="RdBu_r", vmin=-1, vmax=1)
+    ax.set_xticks(range(len(corr_lab)))
+    ax.set_xticklabels(corr_lab, rotation=45, ha="right")
+    ax.set_yticks(range(len(corr_lab)))
+    ax.set_yticklabels(corr_lab)
+    # 下三角 + 对角线：写相关系数与显著性
+    for i in range(len(corr_cols)):
+        for j in range(len(corr_cols)):
+            if not mask[i, j]:
+                p = pv.iloc[i, j]
+                star = "***" if p < 0.001 else "**" if p < 0.01 \
+                    else "*" if p < 0.05 else ""
+                ax.text(j, i, f"{R.iloc[i, j]:.2f}{star}", ha="center",
+                        va="center", fontsize=9,
+                        color="white" if abs(R.iloc[i, j]) > 0.6 else "black")
+    cbar = fig.colorbar(im, ax=ax, shrink=0.85)
+    cbar.set_label("Pearson 相关系数 r（* p<0.05  ** p<0.01  *** p<0.001）",
+                   fontsize=9)
+    ax.set_title("图1  各指标间相关性热力图（下三角为 r 值）")
+    fig.tight_layout()
+    fig.savefig(f"{FIG}/fig1_corr_heatmap.png", dpi=150)
+    plt.close(fig)
+
+    # ---------- 图2: 每人轨迹(spaghetti) ----------
     fig, ax = plt.subplots(figsize=(10, 6))
     sample = d["pid"].value_counts()
     pick = sample[sample >= 3].index[:80]  # 抽样80人清晰显示
@@ -212,18 +251,18 @@ def plot_figures(d, lmm_ri):
     sm_ = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
     fig.colorbar(sm_, ax=ax, label="BMI (kg/m²)")
     ax.set_xlabel("孕周 (周)"); ax.set_ylabel("Y染色体浓度")
-    ax.set_title("图1  各孕妇 Y染色体浓度随孕周的变化轨迹（颜色=BMI）")
-    fig.tight_layout(); fig.savefig(f"{FIG}/fig1_spaghetti.png", dpi=150)
+    ax.set_title("图2  各孕妇 Y染色体浓度随孕周的变化轨迹（颜色=BMI）")
+    fig.tight_layout(); fig.savefig(f"{FIG}/fig2_spaghetti.png", dpi=150)
     plt.close(fig)
 
-    # ---------- 图2: BMI 分箱箱线 ----------
+    # ---------- 图3: BMI 分箱箱线 ----------
     d2 = d.copy()
     d2["BMI分组"] = pd.cut(d2["bmi"], bins=[20, 28, 32, 36, 40, 60],
                           right=False,
                           labels=["[20,28)", "[28,32)", "[32,36)", "[36,40)", "≥40"])
     fig, ax = plt.subplots(figsize=(9, 5.5))
     d2.boxplot(column="yconc", by="BMI分组", ax=ax, grid=False)
-    ax.set_title("图2  Y染色体浓度随 BMI 分组的变化")
+    ax.set_title("图3  Y染色体浓度随 BMI 分组的变化")
     ax.set_ylabel("Y染色体浓度")
     fig.suptitle("")
     # 叠加均值点
@@ -231,10 +270,10 @@ def plot_figures(d, lmm_ri):
     xs = np.arange(len(means))
     ax.plot(xs, means.values, "D-", color="crimson", label="组均值")
     ax.legend()
-    fig.tight_layout(); fig.savefig(f"{FIG}/fig2_bmi.png", dpi=150)
+    fig.tight_layout(); fig.savefig(f"{FIG}/fig3_bmi.png", dpi=150)
     plt.close(fig)
 
-    # ---------- 图3: 边际效应预测曲线(Y~孕周, 固定BMI) ----------
+    # ---------- 图4: 边际效应预测曲线(Y~孕周, 固定BMI) ----------
     b = lmm_ri.fe_params
     # 固定效应协方差：cov_params 含方差分量，截取前 k_fe 行/列
     k_fe = len(b)
@@ -260,12 +299,12 @@ def plot_figures(d, lmm_ri):
     ax.axhline(0.04, color="black", ls="--", lw=1.2)
     ax.text(d["gw"].min() + 0.2, 0.041, "4% 达标线", fontsize=9)
     ax.set_xlabel("孕周 (周)"); ax.set_ylabel("Y染色体浓度")
-    ax.set_title("图3  混合模型边际预测：不同BMI下浓度随孕周的变化(含95%CI)")
+    ax.set_title("图4  混合模型边际预测：不同BMI下浓度随孕周的变化(含95%CI)")
     ax.legend(loc="upper left")
-    fig.tight_layout(); fig.savefig(f"{FIG}/fig3_marginal.png", dpi=150)
+    fig.tight_layout(); fig.savefig(f"{FIG}/fig4_marginal.png", dpi=150)
     plt.close(fig)
 
-    # ---------- 图4: 3D 关系曲面 ----------
+    # ---------- 图5: 3D 关系曲面 ----------
     gx = np.linspace(d["gw"].min(), d["gw"].max(), 40)
     bx = np.linspace(d["bmi"].min(), d["bmi"].max(), 40)
     GG, BB = np.meshgrid(gx, bx)
@@ -276,11 +315,11 @@ def plot_figures(d, lmm_ri):
     ax3.plot_surface(GG, BB, YY, cmap=cm.viridis, alpha=0.85, edgecolor="none")
     ax3.scatter(d["gw"], d["bmi"], d["yconc"], s=4, alpha=0.15, color="red")
     ax3.set_xlabel("孕周(周)"); ax3.set_ylabel("BMI"); ax3.set_zlabel("Y浓度")
-    ax3.set_title("图4  Y染色体浓度 随 (孕周, BMI) 的关系曲面")
-    fig.tight_layout(); fig.savefig(f"{FIG}/fig4_surface.png", dpi=150)
+    ax3.set_title("图5  Y染色体浓度 随 (孕周, BMI) 的关系曲面")
+    fig.tight_layout(); fig.savefig(f"{FIG}/fig5_surface.png", dpi=150)
     plt.close(fig)
 
-    # ---------- 图5: 残差诊断 ----------
+    # ---------- 图6: 残差诊断 ----------
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
     resid = lmm_ri.resid
     fitted = lmm_ri.fittedvalues
@@ -290,9 +329,9 @@ def plot_figures(d, lmm_ri):
     axes[0].set_title("残差 vs 拟合值")
     sm.qqplot(resid, line="45", ax=axes[1], marker=".", alpha=0.4)
     axes[1].set_title("残差 QQ 图")
-    fig.tight_layout(); fig.savefig(f"{FIG}/fig5_diagnostics.png", dpi=150)
+    fig.tight_layout(); fig.savefig(f"{FIG}/fig6_diagnostics.png", dpi=150)
     plt.close(fig)
-    print(f"\n  图表已保存至 {FIG}/（fig1~fig5.png）")
+    print(f"\n  图表已保存至 {FIG}/（fig1~fig6.png）")
 
 
 # ================= 主流程 =================
