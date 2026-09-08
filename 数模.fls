@@ -1,0 +1,6 @@
+PWD c:/Users/dell/Downloads/56RoZe4zc@c3A/C题
+INPUT e:/texlive/2026/texmf.cnf
+INPUT e:/texlive/2026/texmf-dist/web2c/texmf.cnf
+INPUT e:/texlive/2026/texmf-var/web2c/xetex/xelatex.fmt
+INPUT c:/Users/dell/Downloads/56RoZe4zc@c3A/C题/数模.tex
+OUTPUT 数模.log

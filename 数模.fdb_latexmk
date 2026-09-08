@@ -1,0 +1,19 @@
+# Fdb version 4
+["xdvipdfmx"] 0 "数模.xdv" "数模.pdf" "数模" 0 -1
+  "数模.xdv" 0 -1 0 "xelatex"
+  (generated)
+  "数模.pdf"
+  (rewritten before read)
+["xelatex"] 1788848492.5356 "c:/Users/dell/Downloads/56RoZe4zc@c3A/C题/数模.tex" "数模.xdv" "数模" 1788848493.42357 2
+  "c:/Users/dell/Downloads/56RoZe4zc@c3A/C题/数模.tex" 1788848441 2186 c9a1e2645160c5bcc82898036c3802cb ""
+  "cumcmthesis.cls" 0 -1 0 ""
+  "e:/texlive/2026/texmf-dist/web2c/texmf.cnf" 1784120162 43815 bcd8835056a2dfac260166a1c9541261 ""
+  "e:/texlive/2026/texmf-var/web2c/xetex/xelatex.fmt" 1783788398 5961939 71513e1ee2e9ed76893f19ac0c1a6306 ""
+  "e:/texlive/2026/texmf.cnf" 1783787998 713 e69b156964470283e0530f5060668171 ""
+  "数模.aux" 1788848484 32 3985256e7290058c681f74d7a3565a19 "xelatex"
+  "数模.tex" 1788848441 2186 c9a1e2645160c5bcc82898036c3802cb ""
+  (generated)
+  "数模.aux"
+  "数模.log"
+  "数模.xdv"
+  (rewritten before read)
