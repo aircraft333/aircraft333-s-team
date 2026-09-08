@@ -1,0 +1,14 @@
+# 忽略 LaTeX 编译产生的临时中间文件
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.synctex(busy)
+*.fdb_latexmk
+*.fls
+*.bbl
+*.blg
+
+# 如果你们各自在本地编译 PDF，建议也忽略 PDF（防止二进制 PDF 冲突）
+# *.pdf
