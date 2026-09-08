@@ -9,6 +9,7 @@
 *.fls
 *.bbl
 *.blg
+*.pdf
 
 # 如果你们各自在本地编译 PDF，建议也忽略 PDF（防止二进制 PDF 冲突）
 # *.pdf

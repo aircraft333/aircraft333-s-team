@@ -381,6 +381,9 @@ INPUT e:/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy7.tfm
 INPUT e:/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmr12.tfm
 INPUT e:/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmr10.tfm
 INPUT e:/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmr7.tfm
+INPUT ./figures_q1/fig1_corr_heatmap.png
+INPUT ./figures_q1/fig1_corr_heatmap.png
+INPUT ./figures_q1/fig1_corr_heatmap.png
 INPUT e:/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmmi12.tfm
 INPUT e:/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmmi8.tfm
 INPUT e:/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmmi6.tfm
@@ -411,3 +414,4 @@ INPUT e:/texlive/2026/texmf-dist/fonts/tfm/public/cm/cmr6.tfm
 INPUT 数模.aux
 INPUT ./数模.out
 INPUT ./数模.out
+INPUT 数模.aux

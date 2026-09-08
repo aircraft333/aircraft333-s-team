@@ -4,6 +4,7 @@
 \usepackage{subcaption} % 子标题
 \usepackage{booktabs} % 浮动体
 \usepackage{amsmath}
+\usepackage{graphics}
 
 
 \title{NIPT的时点选择与胎儿的异常判定}
@@ -19,7 +20,6 @@
 \dayinput{13}
 
 \begin{document}
-
 \maketitle
 
 \begin{abstract}
@@ -43,6 +43,13 @@
         \section{问题分析}
         \subsection{问题一的分析}
         针对问题一，分析胎儿Y染色体浓度与孕妇孕周数和BMI之间的相关性，从而建立关系模型。通过对附件中所有孕妇共1082组数据的分析，重点关注孕妇对应BMI值与孕周数对胎儿Y染色体浓度的影响。由于附件数据中含有大量重复测量数据，既包含组内相关关系（Y 浓度随孕周上升），又包含组间关系（不同孕妇之间，Y浓度与对应母亲BMI呈负相关），且变异来自个体间，观测不独立，故普通多元回归模型预测偏差较大，而以孕妇为分组建立 LMM(随机截距)，分离组内/组间效应，可以得到更可信的关系模型。
+
+        \begin{figure}[htbp]
+            \centering
+            \includegraphics[width=0.8\textwidth]{figures_q1/fig1_corr_heatmap.png}
+            \caption{胎儿Y染色体浓度与孕周数和BMI的相关性热力图}
+        \end{figure}
+
         \subsection{问题二的分析}
         针对问题二，由于孕妇BMI是对男胎Y染色体浓度最早达标时间的主要因素，所以确定不同BMI范围以及其对应的最佳NIPT时间，具有极高实用价值。最佳NIPT时间应使得孕妇的潜在风险最小。
         本文对问题二的分析承接问题一，采取个体增长模型LLM，同时计算达标概率。由前述二者算得风险最小的最佳时点。然后通过回归树模型，按BMI对个体达标孕周做聚类分析，得到自然BMI区间。最后，结合测量误差和达标保证水平的敏感性，进行误差分析。
