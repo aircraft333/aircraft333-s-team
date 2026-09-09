@@ -101,6 +101,7 @@ plt.grid(True, linestyle='--', alpha=0.6)
 sm = ScalarMappable(cmap=cmap, norm=norm)
 sm.set_array([])
 cbar = plt.colorbar(sm, ax=plt.gca(), orientation='vertical')
+<<<<<<< Updated upstream
 cbar.set_label('计数', fontproperties=zh_font, rotation=90, labelpad=15)
 
 plt.tight_layout()
@@ -108,6 +109,10 @@ save_path1 = os.path.join(output_dir, "1_销售天数分布直方图.png")
 plt.savefig(save_path1, dpi=300)
 print(f"-> 销售天数直方图已保存至: {save_path1}")
 plt.close()
+=======
+cbar.set_label('计数', rotation=90, labelpad=15)
+plt.savefig('销售天数分布直方图.png', dpi=300, bbox_inches='tight')
+>>>>>>> Stashed changes
 
 filtered_result = result[result['销售天数'] <= threshold_1]
 list_1 = filtered_result['单品编码'].tolist()
@@ -136,10 +141,17 @@ plt.grid(True, linestyle='--', alpha=0.6)
 
 for rect in patches:
     height = rect.get_height()
+<<<<<<< Updated upstream
     if height > 0:
         plt.annotate(f'{int(height)}', xy=(rect.get_x() + rect.get_width() / 2, height),
                      xytext=(0, 5), textcoords='offset points',
                      ha='center', va='bottom', fontproperties=zh_font)
+=======
+    plt.annotate(f'{height}', xy=(rect.get_x() + rect.get_width() / 2, height),
+                 xytext=(0, 5), textcoords='offset points',
+                 ha='center', va='bottom')
+plt.savefig('销量占比直方图.png', dpi=300, bbox_inches='tight')
+>>>>>>> Stashed changes
 
 plt.tight_layout()
 save_path2 = os.path.join(output_dir, "2_低销量单品占比直方图.png")
@@ -161,6 +173,7 @@ else:
     target_item = None
 
 if target_item is not None:
+<<<<<<< Updated upstream
     grouped_item = df.groupby(['单品编码', '销售日期'])['销量(千克)'].sum().reset_index()
     filtered_df = grouped_item[grouped_item['单品编码'] == target_item].sort_values(by='销售日期')
     
@@ -182,6 +195,20 @@ if target_item is not None:
     plt.savefig(save_path3, dpi=300)
     print(f"-> 单品样例时序图已保存至: {save_path3}")
     plt.close()
+=======
+    # 选择特定的单品编码
+    grouped = df.groupby(['单品编码', '销售日期'])['销量(千克)'].sum().reset_index()
+    filtered_df = grouped[grouped['单品编码'] == target_item]
+    print(filtered_df)
+    # 绘制折线图
+    plt.figure(figsize=(10, 6))
+    plt.plot(filtered_df['销售日期'], filtered_df['销量(千克)'], marker='o', linestyle='-')
+    plt.title(f'单品编码 {target_item} 的销售日期和销量折线图')
+    plt.xlabel('销售日期')
+    plt.ylabel('销售金额')
+    plt.grid(True)
+    plt.savefig(f'单品编码 {target_item} 的销售日期和销量折线图.png', dpi=300, bbox_inches='tight')
+>>>>>>> Stashed changes
 else:
 <<<<<<< HEAD
     print("交集为空，未绘制单品折线图。")
@@ -234,6 +261,10 @@ plt.xlabel('品类')
 plt.ylabel('日销量(千克)')
 plt.title('六大品类日销量分布箱线图（对数轴，▲=均值）')
 plt.grid(axis='y', alpha=0.3)
+<<<<<<< Updated upstream
 plt.show()
 
 >>>>>>> 55a83b465e7a0f36d5bb285685445e74d5505210
+=======
+plt.savefig('六大品类日销量分布箱线图.png', dpi=300, bbox_inches='tight')
+>>>>>>> Stashed changes
