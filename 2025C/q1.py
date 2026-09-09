@@ -29,7 +29,11 @@ from scipy import stats
 
 # ---------- 中文显示 & 日志 ----------
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
-plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]
+plt.rcParams["font.family"] = "sans-serif"
+plt.rcParams["font.sans-serif"] = [
+    "Microsoft YaHei", "SimHei", "Noto Sans CJK SC",
+    "WenQuanYi Zen Hei", "KaiTi", "Arial Unicode MS"
+]
 plt.rcParams["axes.unicode_minus"] = False
 # 压掉 statsmodels 混合模型的边界收敛警告噪音
 warnings.filterwarnings("ignore", message="The MLE may be on the boundary.*")

@@ -21,7 +21,11 @@ def parse_weeks(s):
 
 def setup_chinese():
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
-    plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]
+    plt.rcParams["font.family"] = "sans-serif"
+    plt.rcParams["font.sans-serif"] = [
+        "Microsoft YaHei", "SimHei", "Noto Sans CJK SC",
+        "WenQuanYi Zen Hei", "KaiTi", "Arial Unicode MS"
+    ]
     plt.rcParams["axes.unicode_minus"] = False
 
 

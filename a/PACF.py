@@ -4,10 +4,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from statsmodels.tsa.stattools import pacf
+import matplotlib
+import matplotlib.font_manager as fm
 
+# 强制重建字体缓存并指定微软雅黑
+matplotlib.font_manager._load_fontmanager(try_read_cache=False)
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
 # ----------------- 1. 图表样式与字体设置 (支持中文显示) -----------------
-plt.rcParams['font.family'] = ['SimHei']  # 正常显示中文
 plt.rcParams['axes.unicode_minus'] = False  # 正常显示负号
+plt.rcParams['font.family'] = 'sans-serif' #增强字体渲染清晰度（可选）
 plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
 
 # 创建输出目录

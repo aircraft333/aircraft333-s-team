@@ -14,7 +14,11 @@ if not os.path.exists(FILE_PATH):
 print(f"✅ 成功找到文件: {FILE_PATH}，正在读取并进行 ACF 分析...")
 
 # 2. 读取数据与中文显示配置
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'SimSun', 'DejaVu Sans']  # 正常显示中文
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = [
+    'Microsoft YaHei', 'SimHei', 'Noto Sans CJK SC',
+    'WenQuanYi Zen Hei', 'KaiTi', 'Arial Unicode MS'
+]
 plt.rcParams['axes.unicode_minus'] = False  # 正常显示负号
 
 df = pd.read_excel(FILE_PATH)
