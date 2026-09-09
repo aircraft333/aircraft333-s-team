@@ -8,10 +8,10 @@ from statsmodels.graphics.tsaplots import plot_acf
 FILE_PATH = "各品类每日总销量.xlsx"
 
 if not os.path.exists(FILE_PATH):
-    print(f"❌ 找不到文件: {FILE_PATH}")
+    print(f"找不到文件: {FILE_PATH}")
     exit()
 
-print(f"✅ 成功找到文件: {FILE_PATH}，正在读取并进行 ACF 分析...")
+print(f"成功找到文件: {FILE_PATH}，正在读取并进行 ACF 分析...")
 
 # 2. 读取数据与中文显示配置
 plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'SimSun', 'DejaVu Sans']  # 正常显示中文
@@ -23,7 +23,7 @@ df['销售日期'] = pd.to_datetime(df['销售日期'])
 # 获取所有蔬菜品类
 categories = df['品类名称'].dropna().unique()
 n_cats = len(categories)
-print(f"📊 共检测到 {n_cats} 个蔬菜品类: {list(categories)}")
+print(f"共检测到 {n_cats} 个蔬菜品类: {list(categories)}")
 
 # 3. 循环绘制每个品类的 ACF 自相关图
 cols = 3
@@ -58,5 +58,5 @@ plt.tight_layout()
 # 保存论文级高清图片
 output_img = "各品类ACF自相关分析图.png"
 plt.savefig(output_img, dpi=300)
-print(f"🎉 ACF 图表已成功生成并保存为: {output_img}")
+print(f"ACF 图表已成功生成并保存为: {output_img}")
 plt.show()
