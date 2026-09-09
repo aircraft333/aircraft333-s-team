@@ -183,6 +183,57 @@ if target_item is not None:
     print(f"-> 单品样例时序图已保存至: {save_path3}")
     plt.close()
 else:
+<<<<<<< HEAD
     print("交集为空，未绘制单品折线图。")
 
 print(f"\n 全部完成！请查看本地生成的文件目录：`{output_dir}/`")
+=======
+    print("交集为空，没有可查看的目标单品。")
+
+####### 第六步：统计各品类的最大值，最小值，平均值，中位数，标准差，方差，偏度，峰度等指标 ########
+# 口径：以"每个销售日某品类的总销量(千克)"为样本，统计六大品类的分布特征。
+# 若想改成"品类内各单品总销量"的分布，只需把下面 groupby 里的 '销售日期' 换成 '单品编码'。
+daily_cat = df.groupby(['品类', '销售日期'])['销量(千克)'].sum().reset_index()
+
+
+def _skew(s):
+    return s.skew()
+
+
+def _kurt(s):
+    return s.kurt()
+
+
+cat_stats = daily_cat.groupby('品类').agg(
+    销售天数=('销量(千克)', 'count'),   # 有销售的天数
+    总销量kg=('销量(千克)', 'sum'),
+    最大值=('销量(千克)', 'max'),
+    最小值=('销量(千克)', 'min'),
+    平均值=('销量(千克)', 'mean'),
+    中位数=('销量(千克)', 'median'),
+    标准差=('销量(千克)', 'std'),
+    方差=('销量(千克)', 'var'),
+    偏度=('销量(千克)', _skew),
+    峰度=('销量(千克)', _kurt),
+)
+cat_stats = cat_stats.sort_values('总销量kg', ascending=False)
+# 附加指标：变异系数（衡量相对离散程度）与极差
+cat_stats['变异系数'] = cat_stats['标准差'] / cat_stats['平均值']
+cat_stats['极差'] = cat_stats['最大值'] - cat_stats['最小值']
+
+print("\n####### 第六步：各品类日销量(kg/天)分布统计 #######")
+print(cat_stats.round(4).to_string())
+
+# 箱线图：直观展示各品类日销量的分布形态
+order = cat_stats.index.tolist()
+box_data = [daily_cat.loc[daily_cat['品类'] == c, '销量(千克)'].values for c in order]
+plt.figure(figsize=(10, 6))
+plt.boxplot(box_data, tick_labels=order, showmeans=True)
+plt.yscale('log')  # 品类间量级差异大，取对数便于观察
+plt.xlabel('品类')
+plt.ylabel('日销量(千克)')
+plt.title('六大品类日销量分布箱线图（对数轴，▲=均值）')
+plt.grid(axis='y', alpha=0.3)
+plt.show()
+
+>>>>>>> 55a83b465e7a0f36d5bb285685445e74d5505210
