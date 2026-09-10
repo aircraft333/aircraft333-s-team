@@ -1,15 +1,20 @@
-import pandas as pd
-import numpy as np
 import pulp
 import openpyxl
 
-def solve_microgrid_and_fill_result1(
-    data_file="附件1.xlsx", 
-    template_file="result1.xlsx", 
-    output_file="result1.xlsx"
+from config import *
+
+
+def main(
+    data_file=ATT1,
+    template_file=TPL1,
+    output_file=OUT1,
 ):
-    print("=" * 60)
-    print("【步骤 1】正在读取附件1数据并建立线性规划模型...")
+    # 相对路径统一相对「项目根目录」(config.py 所在目录) 解析，
+    # 不管从哪个目录运行、脚本挪到哪都不会找不到文件
+    data_file = resolve(data_file)
+    template_file = resolve(template_file)
+    output_file = resolve(output_file)
+
     # 1. 读取附件1数据
     df_input = pd.read_excel(data_file)
     
@@ -17,15 +22,15 @@ def solve_microgrid_and_fill_result1(
     load  = df_input['小区负载'].values.astype(float)              # kW
     pv    = df_input['光伏发电预测功率'].values.astype(float)          # kW
     
-    T = len(price)       # 144 个 10 分钟时段
-    dt = 10.0 / 60.0     # 10 分钟 = 1/6 小时
+    T = N_SLOT           # 144 个 10 分钟时段
+    dt = DT_H            # 10 分钟 = 1/6 小时
     
-    # 2. 储能系统官方参数（严格依照附录1）
-    E_max = 10800.0      # kWh，上限
-    E_min = 1200.0       # kWh，下限
-    E_0   = 6000.0       # kWh，0:00 初始电量
-    P_max = 5000.0       # kW，最大充放电功率
-    eta   = 0.9          # 充放电效率 90%
+    # 2. 储能系统官方参数（严格依照附录1，统一定义在 config.py）
+    E_max = SOC_MAX      # kWh，上限
+    E_min = SOC_MIN      # kWh，下限
+    E_0   = SOC0         # kWh，0:00 初始电量
+    P_max = P_RATE       # kW，最大充放电功率
+    eta   = ETA          # 充放电效率 90%
     
     # 3. 建立混合整数线性规划 (MILP)
     model = pulp.LpProblem("Microgrid_Optimal_Dispatch_Q1", pulp.LpMinimize)
@@ -60,12 +65,11 @@ def solve_microgrid_and_fill_result1(
     model += E[T-1] == E_0
     
     # 7. 模型求解
-    print("【步骤 2】正在调用 CBC 求解器求解最优调度方案...")
     solver = pulp.PULP_CBC_CMD(msg=False)
     status = model.solve(solver)
     
     if pulp.LpStatus[status] != 'Optimal':
-        print("❌ 求解未达到最优，请检查数据与约束！")
+        print("求解未达到最优，请检查数据与约束！")
         return
     
     # 8. 结果提取与单位换算 (kW -> kWh)
@@ -81,11 +85,8 @@ def solve_microgrid_and_fill_result1(
     total_cost = np.sum(price * q_buy)
     total_buy  = np.sum(q_buy)
     
-    print("\n" + "=" * 60)
-    print(f"✅ 全局最优解求解成功！")
     print(f"全天总购电量: {total_buy:.4f} kWh")
     print(f"全天总购电费: {total_cost:.4f} 元")
-    print("=" * 60)
     
     # 9. 统计 4 小时时段充放电量
     # 0:00-4:00 (0~24), 4:00-8:00 (24~48), 8:00-12:00 (48~72),
@@ -111,7 +112,6 @@ def solve_microgrid_and_fill_result1(
     print(f"0:00 储电量: {E_0:.4f} kWh | 24:00 储电量: {e_res[-1]:.4f} kWh")
     
     # 10. 【核心】直接写入官方 result1.xlsx 模板文件
-    print(f"\n【步骤 3】正在将计算结果填入 {output_file} ...")
     wb = openpyxl.load_workbook(template_file)
     
     # --- 填入工作表 1: 计划购电量 ---
@@ -138,13 +138,6 @@ def solve_microgrid_and_fill_result1(
     
     # 保存结果
     wb.save(output_file)
-    print(f"🎉 全部结果已成功填入并保存至文件: {output_file}")
 
 if __name__ == "__main__":
-    # 使用前请确保已安装所需库:
-    # pip install pulp openpyxl pandas numpy
-    solve_microgrid_and_fill_result1(
-        data_file="附件1.xlsx",
-        template_file="result1.xlsx",
-        output_file="result1.xlsx"
-    )
+    main()

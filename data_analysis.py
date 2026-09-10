@@ -140,7 +140,7 @@ save_fig(fig, "fig1_日内曲线_电价_负载_光伏.png")
 
 # --- 图2：净负荷曲线 ---
 fig, ax = plt.subplots(figsize=(12, 4.5))
-ax.plot(hours, net, color="k", lw=1.6, label="净负荷 = 负载 − 光伏")
+ax.plot(hours, net, color="k", lw=1.6, label="净负荷 = 负载 - 光伏")
 ax.fill_between(hours, 0, net, where=net > 0, color=C_PRICE, alpha=0.25, label="需外网购电")
 ax.fill_between(hours, 0, net, where=net <= 0, color=C_NET, alpha=0.35, label="光伏富余(可充电/弃光)")
 ax.axhline(0, c="k", lw=0.8)
@@ -207,7 +207,7 @@ ps = np.sort(price)[::-1]
 ax.plot(np.arange(1, len(ps) + 1) * DT_H, ps, color=C_PRICE, lw=2, label="电价持续曲线")
 ax.fill_between(np.arange(1, len(ps) + 1) * DT_H, 0, ps, color=C_PRICE, alpha=0.12)
 ax.axhline(price.min() / eta2, ls="--", c="#2ca02c", lw=1.4,
-           label=f"套利门槛 谷价/η² = {price.min() / eta2:.4f}")
+           label=f"套利门槛 谷价/η^2 = {price.min() / eta2:.4f}")
 ax.axhline(price.mean(), ls=":", c="gray", lw=1.2, label=f"均价 {price.mean():.4f}")
 ax.annotate(f"最高 {price.max():.4f}", xy=(1, price.max()), xytext=(8, price.max()),
             arrowprops=dict(arrowstyle="->", color="k"), fontsize=9)

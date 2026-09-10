@@ -19,6 +19,7 @@
 import datetime as dt
 import os
 import re
+import sys
 
 import numpy as np
 import pandas as pd
@@ -26,13 +27,36 @@ import matplotlib.pyplot as plt
 from scipy import stats as sps
 
 # =====================================================================
-# 一、路径配置
+# 一、路径配置（相对路径统一相对「项目根目录」= 本文件所在目录）
 # =====================================================================
+ROOT = os.path.dirname(os.path.abspath(__file__))
+
+
+def resolve(*parts):
+    """把相对路径解析成相对项目根的绝对路径
+
+    这样脚本无论从哪个工作目录运行、被挪到哪，都能找到附件与模板。
+    """
+    return os.path.join(ROOT, *parts)
+
+
 ATT1 = "附件1.xlsx"              # 某天：电价、小区负载、光伏预测功率（10 min 粒度）
 ATT2 = "附件2.xlsx"              # 全年：小区负载 + 光伏发电实际功率
 ATT3 = "附件3.xlsx"              # 全年：光伏发电功率预报（0/6/12/18 时发布）
 ATT4 = "附件4.xlsx"              # 全年：电价
+
 DIR_RESULT = "result"            # 官方结果模板目录
+TPL1 = os.path.join(DIR_RESULT, "result1.xlsx")       # 问题一模板
+TPL2 = os.path.join(DIR_RESULT, "result2.xlsx")       # 问题二模板
+TPL3 = os.path.join(DIR_RESULT, "result3.xlsx")       # 问题三模板
+TPL4_2 = os.path.join(DIR_RESULT, "result4-2.xlsx")   # 问题四(对应问题2)模板
+TPL4_3 = os.path.join(DIR_RESULT, "result4-3.xlsx")   # 问题四(对应问题3)模板
+
+OUT1 = "result1.xlsx"            # 结果输出（写到项目根，不动 result/ 里的模板）
+OUT2 = "result2.xlsx"
+OUT3 = "result3.xlsx"
+OUT4_2 = "result4-2.xlsx"
+OUT4_3 = "result4-3.xlsx"
 
 DIR_FIG = "figures"              # 图片根目录
 FIG_Q1 = os.path.join(DIR_FIG, "q1")
@@ -57,7 +81,7 @@ SLOT_MAX = P_RATE * DT_H         # 单时段最大充/放电量 (kWh) = 833.33
 # =====================================================================
 # 三、绘图风格
 # =====================================================================
-FONT = ["SimHei"]
+FONT = ["SimHei", "Microsoft YaHei", "DejaVu Sans"]   # 依次回退，避免个别字形缺失
 DPI = 120
 LW = 1.6                         # 常规线宽
 C_PRICE = "#d62728"              # 电价：红
@@ -90,9 +114,18 @@ REPORT = []
 
 
 def log(*args):
-    """打印并记入报告缓冲区"""
+    """打印并记入报告缓冲区
+
+    注意：Windows 下若 stdout 被重定向为管道/文件，Python 会按 ANSI
+    代码页（cp936）编码，遇到 '²'、'η' 这类字符会抛 UnicodeEncodeError。
+    这里做一次兜底，保证 `python x.py > out.txt` 场景下也不中断。
+    """
     s = " ".join(str(a) for a in args)
-    print(s)
+    try:
+        print(s)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+        print(s.encode(enc, "replace").decode(enc, "replace"))
     REPORT.append(s)
     return s
 
@@ -249,7 +282,10 @@ def tier_legend(ax, alpha=0.2):
 # =====================================================================
 __all__ = [
     # 路径
+    "ROOT", "resolve",
     "ATT1", "ATT2", "ATT3", "ATT4", "DIR_RESULT", "DIR_FIG", "FIG_Q1", "TXT_Q1",
+    "TPL1", "TPL2", "TPL3", "TPL4_2", "TPL4_3",
+    "OUT1", "OUT2", "OUT3", "OUT4_2", "OUT4_3",
     # 系统参数
     "N_SLOT", "DT_H", "HORIZON_H", "ETA", "ETA2", "E_CAP",
     "SOC_MIN", "SOC_MAX", "SOC0", "P_RATE", "SLOT_MAX",
@@ -266,5 +302,6 @@ __all__ = [
     "TIER_V", "TIER_F", "TIER_P", "classify_tiers",
     "label_segments", "shade_tiers", "tier_legend",
     # 依赖（供脚本直接使用，免去重复 import）
-    "np", "pd", "plt", "sps", "os", "dt", "re",
+    # 注意：不导出 dt / re / sys，避免与脚本里的局部变量名（如 dt = DT_H）冲突
+    "np", "pd", "plt", "sps", "os",
 ]
