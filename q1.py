@@ -9,70 +9,68 @@ def main(
     template_file=TPL1,
     output_file=OUT1,
 ):
-    # 相对路径统一相对「项目根目录」(config.py 所在目录) 解析，
-    # 不管从哪个目录运行、脚本挪到哪都不会找不到文件
     data_file = resolve(data_file)
     template_file = resolve(template_file)
     output_file = resolve(output_file)
 
-    # 1. 读取附件1数据
+    #读取附件1数据
     df_input = pd.read_excel(data_file)
     
-    price = df_input['电价'].values.astype(float)                # 元/kWh
-    load  = df_input['小区负载'].values.astype(float)              # kW
-    pv    = df_input['光伏发电预测功率'].values.astype(float)          # kW
+    price = df_input['电价'].values.astype(float)              
+    load  = df_input['小区负载'].values.astype(float)            
+    pv    = df_input['光伏发电预测功率'].values.astype(float)        
     
     T = N_SLOT           # 144 个 10 分钟时段
     dt = DT_H            # 10 分钟 = 1/6 小时
     
-    # 2. 储能系统官方参数（严格依照附录1，统一定义在 config.py）
+    # 储能系统参数
     E_max = SOC_MAX      # kWh，上限
     E_min = SOC_MIN      # kWh，下限
     E_0   = SOC0         # kWh，0:00 初始电量
     P_max = P_RATE       # kW，最大充放电功率
     eta   = ETA          # 充放电效率 90%
     
-    # 3. 建立混合整数线性规划 (MILP)
+    #建立混合整数线性规划 (MILP)
     model = pulp.LpProblem("Microgrid_Optimal_Dispatch_Q1", pulp.LpMinimize)
-    
-    # 4. 决策变量
+
+    #决策变量
     P_buy = [pulp.LpVariable(f"P_buy_{t}", lowBound=0) for t in range(T)]
     P_ch  = [pulp.LpVariable(f"P_ch_{t}", lowBound=0, upBound=P_max) for t in range(T)]
     P_dis = [pulp.LpVariable(f"P_dis_{t}", lowBound=0, upBound=P_max) for t in range(T)]
-    P_curt= [pulp.LpVariable(f"P_curt_{t}", lowBound=0) for t in range(T)]  # 弃光
-    u     = [pulp.LpVariable(f"u_{t}", cat=pulp.LpBinary) for t in range(T)]  # 互斥变量
+    P_curt= [pulp.LpVariable(f"P_curt_{t}", lowBound=0) for t in range(T)]
+    u     = [pulp.LpVariable(f"u_{t}", cat=pulp.LpBinary) for t in range(T)]
     E     = [pulp.LpVariable(f"E_{t}", lowBound=E_min, upBound=E_max) for t in range(T)]
     
-    # 5. 目标函数：全天购电总费用最小
+    #目标函数：全天购电总费用最小
     model += pulp.lpSum([price[t] * (P_buy[t] * dt) for t in range(T)])
     
-    # 6. 约束条件
+    #约束条件
     for t in range(T):
-        # (1) 供需平衡
+        #供需平衡
         model += P_buy[t] + pv[t] + P_dis[t] - P_ch[t] - P_curt[t] == load[t]
         
-        # (2) 充放电互斥
+        #充放电互斥
         model += P_ch[t] <= u[t] * P_max
         model += P_dis[t] <= (1 - u[t]) * P_max
         
-        # (3) 储电量状态转移
+        #储电量状态转移
         if t == 0:
             model += E[t] == E_0 + (eta * P_ch[t] - (1.0 / eta) * P_dis[t]) * dt
         else:
             model += E[t] == E[t-1] + (eta * P_ch[t] - (1.0 / eta) * P_dis[t]) * dt
             
-    # (4) 0:00 与 24:00 (t=143) 储电量相同
+    #0:00 与 24:00 (t=143) 储电量相同
     model += E[T-1] == E_0
     
-    # 7. 模型求解
+    # 模型求解
     solver = pulp.PULP_CBC_CMD(msg=False)
     status = model.solve(solver)
     
     if pulp.LpStatus[status] != 'Optimal':
-        print("求解未达到最优，请检查数据与约束！")
+        print("求解未达到最优")
         return
     
-    # 8. 结果提取与单位换算 (kW -> kWh)
+    #结果提取与单位换算 (kW -> kWh)
     p_buy_res = np.array([pulp.value(P_buy[t]) for t in range(T)])
     p_ch_res  = np.array([pulp.value(P_ch[t]) for t in range(T)])
     p_dis_res = np.array([pulp.value(P_dis[t]) for t in range(T)])
@@ -88,7 +86,7 @@ def main(
     print(f"全天总购电量: {total_buy:.4f} kWh")
     print(f"全天总购电费: {total_cost:.4f} 元")
     
-    # 9. 统计 4 小时时段充放电量
+    #统计 4 小时时段充放电量
     # 0:00-4:00 (0~24), 4:00-8:00 (24~48), 8:00-12:00 (48~72),
     # 12:00-16:00 (72~96), 16:00-20:00 (96~120), 20:00-24:00 (120~144)
     storage_periods = [
@@ -111,7 +109,7 @@ def main(
         
     print(f"0:00 储电量: {E_0:.4f} kWh | 24:00 储电量: {e_res[-1]:.4f} kWh")
     
-    # 10. 【核心】直接写入官方 result1.xlsx 模板文件
+    #写入result1.xlsx文件
     wb = openpyxl.load_workbook(template_file)
     
     # --- 填入工作表 1: 计划购电量 ---
