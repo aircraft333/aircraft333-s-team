@@ -113,7 +113,8 @@ for i in range(len(names)):
 
 # ==================== 6. 绘图 ====================
 # --- 图1：电价 / 负载 / 光伏 日内曲线 ---
-fig, axes = plt.subplots(3, 1, figsize=(12, 9), sharex=True)
+fig, axes = plt.subplots(3, 1, figsize=(10, 10), sharex=True)
+
 axes[0].plot(hours, price, color=C_PRICE, lw=1.6)
 axes[0].axhline(price.mean(), ls="--", c="gray", lw=1, label=f"均值 {price.mean():.4f}")
 axes[0].set_ylabel("电价 (元/kWh)")
@@ -129,6 +130,15 @@ axes[2].plot(hours, power, color=C_PV, lw=1.6)
 axes[2].fill_between(hours, 0, power, color=C_PV, alpha=0.15)
 axes[2].set_ylabel("光伏功率 (kW)")
 axes[2].set_xlabel("时刻")
+
+# ---- 关键修改：固定 x 轴刻度 ----
+from matplotlib.ticker import MultipleLocator, FuncFormatter
+
+axes[2].xaxis.set_major_locator(MultipleLocator(2))        # 每 2 小时一个刻度
+axes[2].xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{int(x):02d}:00"))
+axes[2].set_xlim(0, 24)                                     # 明确边界
+axes[2].tick_params(axis='x', labelsize=9)
+
 for ax in axes:
     shade_tiers(ax, segs)
     ax.grid(True, alpha=0.3)
@@ -137,7 +147,6 @@ tier_legend(axes[0])
 axes[0].legend()
 fig.tight_layout()
 save_fig(fig, "fig1_日内曲线_电价_负载_光伏.png")
-
 # --- 图2：净负荷曲线 ---
 fig, ax = plt.subplots(figsize=(12, 4.5))
 ax.plot(hours, net, color="k", lw=1.6, label="净负荷 = 负载 - 光伏")

@@ -229,6 +229,52 @@ def att1_arrays(df):
     }
 
 
+def load_att2():
+    """读取附件2：全年小区负载与光伏发电实际功率
+
+    返回 (dates, L, G)：
+        dates : DatetimeIndex(365)，2025-01-01 ~ 2025-12-31
+        L, G  : (365, N_SLOT) 数组，单位 kW
+
+    列口径与附件1 一致：第 k 列的时间戳为 T_k，对应时段 [T_k-10min, T_k]。
+    """
+    xl = pd.ExcelFile(resolve(ATT2))
+    dfL = xl.parse("小区负载")
+    dfG = xl.parse("光伏发电实际功率")
+    dates = pd.DatetimeIndex(pd.to_datetime(dfL.iloc[:, 0]))   # 必须转成索引，才能用 dates[-1]
+    L = dfL.iloc[:, 1:].to_numpy(float)
+    G = dfG.iloc[:, 1:].to_numpy(float)
+    assert L.shape == G.shape and L.shape == (len(dates), N_SLOT), "附件2 结构异常"
+    return dates, L, G
+
+
+def load_att3():
+    """读取附件3：光伏发电功率预报
+
+    结构：365 天 × 4 个发布时刻（0:00 / 6:00 / 12:00 / 18:00），
+          每行给出发布后第 1~24 个整点的光伏功率预报（kW）。
+
+    返回 DataFrame，列 ['日期', '预报时刻', '预报1小时', ..., '预报24小时']，
+    '日期' 已向下填充（原表是合并单元格）并转为 datetime。
+    """
+    df = pd.read_excel(resolve(ATT3))
+    df["日期"] = pd.to_datetime(df["日期"].ffill())
+    df["预报时刻"] = df["预报时刻"].astype(str).str.strip()
+    return df
+
+
+def att3_forecast(df3, date, hour=0):
+    """取某天某发布时刻（0/6/12/18）对未来 24 个整点的光伏预报
+
+    返回 (24,) 数组（kW）；若该天该时刻无预报则返回 None。
+    """
+    m = (df3["日期"] == pd.Timestamp(date)) & (df3["预报时刻"] == f"{hour}:00")
+    row = df3[m]
+    if not len(row):
+        return None
+    return row.iloc[0, 2:].to_numpy(float)
+
+
 # =====================================================================
 # 七、峰谷平时段划分
 # =====================================================================
@@ -278,6 +324,106 @@ def tier_legend(ax, alpha=0.2):
 
 
 # =====================================================================
+# 九、日前预测（严格只用历史数据）
+# ---------------------------------------------------------------------
+# 统一约定：X 为 (D, T) 的历史实际值矩阵（天 × 时段），F 为同形状的预测矩阵，
+#          F[i] 只允许用到第 0…i−1 天的数据。第 0 天无任何历史，用 fallback
+#          （通常传附件1 的基准日曲线）兜底；由于储备电每天末都会回到 SOC 下限、
+#          各天在储能上并不耦合，第 0 天的取值不会影响后续任何一天。
+# =====================================================================
+def fc_ma(X, n, fallback=None):
+    """移动平均预测：F[i] = mean(X[i-n : i])，只回看前 n 天
+
+    n = 1 即「持续性预测」（用昨天实际值当今天的预测）。
+    """
+    X = np.asarray(X, dtype=float)
+    D, T = X.shape
+    cs = np.vstack([np.zeros((1, T)), np.cumsum(X, axis=0)])   # 前缀和，O(1) 取区间均值
+    idx = np.arange(D)
+    s = np.maximum(0, idx - n)
+    cnt = np.maximum(idx - s, 1)
+    F = (cs[idx] - cs[s]) / cnt[:, None]
+    if fallback is not None:
+        F[0] = fallback
+    return F
+
+
+def fc_ewma(X, alpha, fallback=None):
+    """指数加权移动平均：F[i] = α·X[i-1] + (1-α)·F[i-1]，只用历史
+
+    α 越大越贴近最近一天，α→1 退化为持续性预测。
+    """
+    X = np.asarray(X, dtype=float)
+    D, T = X.shape
+    F = np.empty_like(X)
+    F[0] = X[0] if fallback is None else fallback
+    for i in range(1, D):
+        F[i] = alpha * X[i - 1] + (1.0 - alpha) * F[i - 1]
+    return F
+
+
+def fc_wday(X, lag=7, fallback=None):
+    """同星期预测：F[i] = X[i-lag]，即取上周同一天（捕捉周内周期）"""
+    X = np.asarray(X, dtype=float)
+    D, T = X.shape
+    F = np.empty_like(X)
+    for i in range(D):
+        if i >= lag:
+            F[i] = X[i - lag]
+        elif i > 0:
+            F[i] = X[:i].mean(axis=0)
+        else:
+            F[i] = X[0] if fallback is None else fallback
+    return F
+
+
+# =====================================================================
+# 十、储能实时平衡仿真（逐槽物理必然规则）
+# ---------------------------------------------------------------------
+# 购电量 b_t 在 0:00 锁定后，每个时段的储能净动作被唯一决定：
+#     Δ_t = L_t − G_t − b_t
+#     Δ_t > 0 → 储能放电补缺（受功率与 SOC 下限约束），不足部分为紧急购电
+#     Δ_t < 0 → 储能吸纳盈余（受功率与 SOC 上限约束），多余部分弃光
+# 该规则不含前瞻，因此「全天仿真」与「分段仿真拼接」完全等价，
+# 适合多阶段滚动调整（问题三）的分段执行。
+# =====================================================================
+def simulate_dispatch(L, G, b, E0, t_from=0, t_to=None):
+    """给定已锁定的购电量 b，模拟储能实时平衡
+
+    参数
+        L, G   : (T,) 实际负载 / 实际光伏 (kW)
+        b      : (T,) 已锁定的购电功率 (kW)
+        E0     : t_from 时刻的储电量 (kWh)
+        t_from, t_to : 仿真区间 [t_from, t_to)，默认全天
+    返回 dict(c, d, e, s, E)，长度均为 t_to - t_from，单位 kW / kWh
+        c 充电功率 / d 放电功率 / e 紧急购电功率 / s 弃光功率 / E 时段末储电量
+    """
+    L = np.asarray(L, dtype=float)
+    G = np.asarray(G, dtype=float)
+    b = np.asarray(b, dtype=float)
+    t_to = len(L) if t_to is None else t_to
+    n = t_to - t_from
+    c = np.zeros(n); d = np.zeros(n); e = np.zeros(n); s = np.zeros(n); E = np.zeros(n)
+    cur = float(E0)
+    for k in range(n):
+        t = t_from + k
+        delta = L[t] - G[t] - b[t]
+        if delta > 0:                                   # 缺电 → 放电补
+            d_max = min(P_RATE, max(0.0, (cur - SOC_MIN) * ETA / DT_H))
+            d[k] = min(delta, d_max)
+            e[k] = delta - d[k]
+            cur -= d[k] / ETA * DT_H
+        else:                                           # 盈余 → 吸纳
+            c_max = min(P_RATE, max(0.0, (SOC_MAX - cur) / (ETA * DT_H)))
+            c[k] = min(-delta, c_max)
+            s[k] = -delta - c[k]
+            cur += c[k] * ETA * DT_H
+        cur = min(max(cur, SOC_MIN), SOC_MAX)           # 抑制数值漂移
+        E[k] = cur
+    return {"c": c, "d": d, "e": e, "s": s, "E": E}
+
+
+# =====================================================================
 # 八、导出清单（from config import * 只会带出这里列出的名字）
 # =====================================================================
 __all__ = [
@@ -297,10 +443,14 @@ __all__ = [
     # 时间
     "parse_time_to_min", "to_min", "fmt",
     # 数据
-    "load_att1", "att1_arrays",
+    "load_att1", "att1_arrays", "load_att2", "load_att3", "att3_forecast",
     # 峰谷平
     "TIER_V", "TIER_F", "TIER_P", "classify_tiers",
     "label_segments", "shade_tiers", "tier_legend",
+    # 日前预测
+    "fc_ma", "fc_ewma", "fc_wday",
+    # 储能实时平衡
+    "simulate_dispatch",
     # 依赖（供脚本直接使用，免去重复 import）
     # 注意：不导出 dt / re / sys，避免与脚本里的局部变量名（如 dt = DT_H）冲突
     "np", "pd", "plt", "sps", "os",
