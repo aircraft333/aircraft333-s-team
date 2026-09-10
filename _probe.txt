@@ -1,9 +1,40 @@
-dtype: object
-类型分布: {'str': 84, 'time': 60}
-前5: [datetime.time(0, 10), datetime.time(0, 20), datetime.time(0, 30), datetime.time(0, 40), datetime.time(0, 50)]
-后5: ['23:20', '23:30', '23:40', '23:50', '0:00+1']
-含 '+' 的: 1
-样例 str: ['00:10:00', '00:20:00', '00:30:00'] ['23:40', '23:50', '0:00+1']
-
-电价 min/max/mean: 0.3713 1.3952 0.7662
-缺失值: {'时间': 0, '电价': 0, '小区负载': 0, '光伏发电预测功率': 0}
+  1|'# -*- coding: utf-8 -*-'
+  2|'"""'
+  3|'2026 高教社杯 C 题 · 问题一：附件 1 数据探索与可视化'
+  4|'====================================================================='
+  5|'数据：附件1.xlsx = 某天的电价(元/kWh)、小区负载(kW)、光伏发电预测功率(kW)，10 分钟粒度'
+  6|''
+  7|'时间口径（重要，务必与 result1.xlsx 模板保持一致）：'
+  8|'    附件1 的时间戳按「时段右端点」解释，第 k 行时间 T_k 对应区间 [T_k-10min, T_k]：'
+  9|'        第 1   行 00:10      -> [00:00, 00:10]'
+ 10|'        最后 1 行 0:00+1     -> [23:50, 24:00]   （0:00+1 表示当天 24:00）'
+ 11|'    这样 144 段恰好铺满 [00:00, 24:00]，与题目「储能 0:00 与 24:00 储电量相同」对得上。'
+ 12|''
+ 13|'输出：figures_q1/*.png（论文插图）+ q1_数据分析结果.txt（数据事实汇总）'
+ 14|'"""'
+ 15|'import datetime as dt'
+ 16|'import logging'
+ 17|'import os'
+ 18|'import re'
+ 19|''
+ 20|'import numpy as np'
+ 21|'import pandas as pd'
+ 22|'import matplotlib.pyplot as plt'
+ 23|'from scipy import stats as sps'
+ 24|''
+ 25|'plt.rcParams["font.family"] = ["SimHei"]'
+ 26|'plt.rcParams["axes.unicode_minus"] = False       '
+ 27|'plt.rcParams["figure.dpi"] = 120'
+ 28|''
+ 29|'PATH = "附件1.xlsx"'
+ 30|'FIGDIR = "figures_q1"'
+ 31|'OUTTXT = "q1_数据分析结果.txt"'
+ 32|''
+ 33|'DT_H = 1 / 6                                        # 单个时段时长(小时) = 10 min'
+ 34|'ETA = 0.90                                          # 储能充放电效率'
+ 35|'SOC_MIN, SOC_MAX, SOC0 = 1200.0, 10800.0, 6000.0    # 附录1：SOC 上下限与 0:00 初始电量(kWh)'
+ 36|'P_RATE = 5000.0                                     # 最大充/放电功率(kW)'
+ 37|''
+ 38|'C_PRICE, C_LOAD, C_PV, C_NET = "#d62728", "#1f77b4", "#ff7f0e", "#2ca02c"'
+ 39|''
+ 40|'os.makedirs(FIGDIR, exist_ok=True)'
