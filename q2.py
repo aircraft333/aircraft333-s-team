@@ -276,11 +276,11 @@ def main():
         plan = solve_day(pi, L_plan, G_plan, E_start)
 
         if USE_RT:
-            # 实际执行：购电量已按计划结算并固定，储能在日内实时再调度
-            rt = solve_rt(pi, L[i], G[i], plan["b"], E_start)
-            deficit = rt["e"]
-            E_next = rt["E"][-1]
-            q_ch, q_dis, E_traj = rt["c"] * DT_H, rt["d"] * DT_H, rt["E"]
+            # 实际执行：购电量已按计划结算并固定，储能按逐槽物理必然规则实时平衡
+            sim = simulate_dispatch(L[i], G[i], plan["b"], E_start)
+            deficit = sim["e"]
+            E_next = sim["E"][-1]
+            q_ch, q_dis, E_traj = sim["c"] * DT_H, sim["d"] * DT_H, sim["E"]
         else:
             # 实际执行：储能严格按计划充放电，偏差全部由紧急购电填补
             supply = G[i] + plan["b"] + plan["d"] - plan["c"]

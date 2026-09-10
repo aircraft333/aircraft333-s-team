@@ -378,6 +378,52 @@ def fc_wday(X, lag=7, fallback=None):
 
 
 # =====================================================================
+# 十、储能实时平衡仿真（逐槽物理必然规则）
+# ---------------------------------------------------------------------
+# 购电量 b_t 在 0:00 锁定后，每个时段的储能净动作被唯一决定：
+#     Δ_t = L_t − G_t − b_t
+#     Δ_t > 0 → 储能放电补缺（受功率与 SOC 下限约束），不足部分为紧急购电
+#     Δ_t < 0 → 储能吸纳盈余（受功率与 SOC 上限约束），多余部分弃光
+# 该规则不含前瞻，因此「全天仿真」与「分段仿真拼接」完全等价，
+# 适合多阶段滚动调整（问题三）的分段执行。
+# =====================================================================
+def simulate_dispatch(L, G, b, E0, t_from=0, t_to=None):
+    """给定已锁定的购电量 b，模拟储能实时平衡
+
+    参数
+        L, G   : (T,) 实际负载 / 实际光伏 (kW)
+        b      : (T,) 已锁定的购电功率 (kW)
+        E0     : t_from 时刻的储电量 (kWh)
+        t_from, t_to : 仿真区间 [t_from, t_to)，默认全天
+    返回 dict(c, d, e, s, E)，长度均为 t_to - t_from，单位 kW / kWh
+        c 充电功率 / d 放电功率 / e 紧急购电功率 / s 弃光功率 / E 时段末储电量
+    """
+    L = np.asarray(L, dtype=float)
+    G = np.asarray(G, dtype=float)
+    b = np.asarray(b, dtype=float)
+    t_to = len(L) if t_to is None else t_to
+    n = t_to - t_from
+    c = np.zeros(n); d = np.zeros(n); e = np.zeros(n); s = np.zeros(n); E = np.zeros(n)
+    cur = float(E0)
+    for k in range(n):
+        t = t_from + k
+        delta = L[t] - G[t] - b[t]
+        if delta > 0:                                   # 缺电 → 放电补
+            d_max = min(P_RATE, max(0.0, (cur - SOC_MIN) * ETA / DT_H))
+            d[k] = min(delta, d_max)
+            e[k] = delta - d[k]
+            cur -= d[k] / ETA * DT_H
+        else:                                           # 盈余 → 吸纳
+            c_max = min(P_RATE, max(0.0, (SOC_MAX - cur) / (ETA * DT_H)))
+            c[k] = min(-delta, c_max)
+            s[k] = -delta - c[k]
+            cur += c[k] * ETA * DT_H
+        cur = min(max(cur, SOC_MIN), SOC_MAX)           # 抑制数值漂移
+        E[k] = cur
+    return {"c": c, "d": d, "e": e, "s": s, "E": E}
+
+
+# =====================================================================
 # 八、导出清单（from config import * 只会带出这里列出的名字）
 # =====================================================================
 __all__ = [
@@ -403,6 +449,8 @@ __all__ = [
     "label_segments", "shade_tiers", "tier_legend",
     # 日前预测
     "fc_ma", "fc_ewma", "fc_wday",
+    # 储能实时平衡
+    "simulate_dispatch",
     # 依赖（供脚本直接使用，免去重复 import）
     # 注意：不导出 dt / re / sys，避免与脚本里的局部变量名（如 dt = DT_H）冲突
     "np", "pd", "plt", "sps", "os",
