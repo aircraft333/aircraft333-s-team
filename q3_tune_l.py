@@ -10,6 +10,15 @@ q3.py 超参数自动网格搜索脚本 (PV_MIX × PV_HIST_N)
     2. 一次性加载数据，复用底层预报与 LP 求解器；
     3. 自动计算 36 组参数下的考核期总电费并寻找最优解；
     4. 导出 tune_results.csv，打印热力图矩阵，并生成最优结果表格。
+
+⚠ 【口径必须对齐】否则搜出来的最优与 result3.xlsx 不可比：
+    · 负载自适应  adapt = q3.ADAPT（= 0.2）—— 旧版本写死了 adapt=0.0，已修正；
+    · 安全裕量    按 q3.HEDGE_MODE 自动选：quantile -> 逐日分位数矩阵；
+                  scalar -> 全天固定 q3.HEDGE kW；
+    · 决策时刻与汇总区间同 q3.py（2/1 起 334 天）。
+
+⏱ 【耗时可观】36 组 × 全年 365 天 × 0.32 s ≈ 70 分钟。
+  若只需要粗排，可把 mix_candidates 改成 [0.3, 0.4, 0.5] 并把 hist_candidates 改成 [2, 3, 4]。
 """
 
 import os
@@ -21,8 +30,18 @@ import pandas as pd
 import q3
 from config import *
 
-def run_single_year(df3, dates, L, G, pi, L1, mix, hist_n, hedge=0.0):
-    """封装单次全年的闭环滚动求解流程"""
+# ---- 运行控制 ----
+# DAYS=None -> 跑全部 365 天（约 70 分钟 / 36 组）
+# DAYS=(60, 190) -> 【粗筛模式】只跑这 130 天（约 24 分钟），
+#                  先用热力图排出前几名，再把上面两个候选列表缩小、DAYS 改回 None 跑全年
+DAYS = None
+
+def run_single_year(df3, dates, L, G, pi, L1, mix, hist_n, Xh=None):
+    """封装单次全年的闭环滚动求解流程
+
+    Xh : (D, 144) 的逐日安全裕量矩阵（由 q3.build_hedge_q3 给出）；
+         None 时退回 q3.HEDGE 标量（仅用于旧口径复现）
+    """
     decide_h = q3.DECIDE_H
     D = len(dates)
 
@@ -31,7 +50,7 @@ def run_single_year(df3, dates, L, G, pi, L1, mix, hist_n, hedge=0.0):
         df3, dates, G, decide_h=decide_h, mix=mix, mix_hist=hist_n
     )
     load_fc = q3.build_load_forecast(
-        L, L1, dates, decide_h=decide_h, lag=q3.LOAD_LAG, adapt=0.0
+        L, L1, dates, decide_h=decide_h, lag=q3.LOAD_LAG, adapt=q3.ADAPT
     )
 
     # 2. 逐日滚动求解
@@ -52,7 +71,7 @@ def run_single_year(df3, dates, L, G, pi, L1, mix, hist_n, hedge=0.0):
             G=G[d],
             E_start=current_E0,
             decide_h=decide_h,
-            hedge=hedge,
+            hedge=(Xh[d] if Xh is not None else q3.HEDGE),
         )
         res_day["date"] = pd.Timestamp(dates[d])
         recs.append(res_day)
@@ -61,6 +80,8 @@ def run_single_year(df3, dates, L, G, pi, L1, mix, hist_n, hedge=0.0):
         current_E0 = res_day["E24"]
 
     # 3. 统计汇总考核期 (2025.2.1 - 2025.12.31) 结果
+    #    注意：q3.summarize 的 cost_total = cost_dev + cost_emg
+    #    （cost_dev 已含计划部分，不能再加 cost_plan，否则重复计入）
     summary = q3.summarize(recs, out_start=q3.OUT_START)
     return recs, summary
 
@@ -84,6 +105,27 @@ def run_tuning():
     pi, L1 = A1["price"], A1["load"]
     dates, L, G = load_att2()
     df3 = load_att3()
+    ACC = int(np.argmax(np.asarray(dates >= pd.Timestamp(q3.OUT_START))))
+    print(f"      数据 {len(dates)} 天；全年评价区间 {q3.OUT_START} 起 "
+          f"{len(dates) - ACC} 天")
+    if DAYS is not None:                     # 粗筛模式：只跑一个区块
+        d0, d1 = DAYS
+        print(f"      【粗筛模式】 只跑 {dates[d0].date()} ~ {dates[d1 - 1].date()}"
+              f"（{d1 - d0} 天）—— 先用它排序，再对前几名把 DAYS 改回 None 跑全年")
+        dates, L, G = dates[d0:d1], L[d0:d1], G[d0:d1]
+        ACC = int(np.argmax(np.asarray(dates >= pd.Timestamp(q3.OUT_START))))
+
+    # ---------- 安全裕量：与 q3.py 同口径（跑 36 次，但只算一次）----------
+    if q3.HEDGE_MODE == "quantile":
+        Xh = q3.build_hedge_q3(L, L1, dates)
+        hedge_desc = (f"逐时段取历史 {q3.HEDGE_WIN} 天负载预报误差的 "
+                      f"{q3.HEDGE_PARAM:.2f} 分位数")
+    else:
+        Xh = np.full((len(dates), N_SLOT), float(q3.HEDGE))
+        hedge_desc = f"全天固定 {q3.HEDGE:g} kW"
+    print(f"【口径】负载自适应 adapt={q3.ADAPT:g}；安全裕量 {hedge_desc}；"
+          f"决策时刻 {q3.DECIDE_H}")
+    print("        （与 q3.py 主口径一致，结果可直接和 result3.xlsx 对比）")
     print("数据加载完成，开始执行全局优化搜索...\n")
 
     results = []
@@ -113,7 +155,7 @@ def run_tuning():
                 L1=L1,
                 mix=mix,
                 hist_n=hist_n,
-                hedge=q3.HEDGE,
+                Xh=Xh,
             )
 
             tot_cost = summary["cost_total"]
