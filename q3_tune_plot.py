@@ -186,15 +186,15 @@ def main():
     ax.grid(alpha=.3, axis="y")
     ax.legend(fontsize=8)
 
-    # (d) 裕量全天形状
+    # (d) 裕量全天形状（用全年最优的那一档，即实际采用的取值）
     ax = axes[1, 1]
     iday = len(dates) - 1
     hh = np.arange(N_SLOT) / 6.0
-    X_adopt = hedge3(L, L1, dates, Q_THEORY, WIN0)
+    X_adopt = hedge3(L, L1, dates, q_best, WIN0)
     ax.plot(hh, np.full(N_SLOT, FIX_KW), "--", color=OKABE, lw=LW,
             label=f"固定 {FIX_KW:g} kW（均匀加码）")
     ax.plot(hh, X_adopt[iday], "-", color=C_PRICE, lw=LW,
-            label=f"分位 q={Q_THEORY:.2f}, win={WIN0}（按误差形状加码）")
+            label=f"分位 q={q_best:.2f}, win={WIN0}（按误差形状加码，实际采用）")
     ax.plot(hh, np.maximum(L[iday] - Lf[0, iday], 0), "-", color="0.55", lw=1.2,
             label="当日实际负载预报误差（正偏差部分）")
     ax.set_xlabel("时刻（小时）")
