@@ -47,6 +47,7 @@ import sys
 import openpyxl
 import pulp
 
+import q2                      # 复用 q2.build_hedge（报童分位裕量）
 from config import *
 
 # ==================== 运行配置（默认值 = q3_tune.py 区块寻优结果） ====================
@@ -54,7 +55,20 @@ REL_H = (0, 6, 12, 18)            # 附件3 的预报发布时刻（题目给定
 DECIDE_H = (0, 6, 12, 18)         # 实际做决策 / 调整的时刻（可加密；每个时刻取最近一次已发布预报）
 LOAD_LAG = 7                      # 负载日前预测：上周同一天
 PV_MIX = 0.4                      # 光伏预报 = mix·附件3(整点插值) + (1−mix)·前3天均值
-HEDGE = 300.0                     # 加在负载预报上的安全裕量 (kW)，作用于计划与调整两个阶段
+HEDGE = 300.0                     # 标量模式下的固定裕量 (kW)，作用于计划与调整两个阶段
+# 安全裕量口径（`q3_hedge_q.py` → `q3_裕量寻优.txt`）：
+#   报童模型给两个临界分位 —— 计划阶段「π 对 5π」⇒ 1−1/k = 0.80；
+#                              调整阶段「1.5π 对 5π」⇒ (5−1.5)/((5−1.5)+1.5) = 0.70。
+#   两阶段共用同一裕量，故最优值落在 0.70~0.80。
+#   全年 334 天实测（区块粗筛 130 天 → 全年复算）：
+#       固定 300 kW              → 13,847,475.1 元（日均裕量 300 kW）
+#       分位 q=0.85, win=45      → 13,659,190.9 元（区块粗筛的最优点）
+#       分位 q=0.80, win=60 ←采用 → 13,598,164.7 元，省 249,310 元（1.80%）
+#   值得强调：**年度最优就是报童解析值 0.80，零调参**；区块粗筛偏向 0.85，
+#   但各档差异 <0.5%（0.80 与 0.85 仅差 0.45%），说明该参数不敏感。
+HEDGE_MODE = "quantile"           # "scalar"：全天固定 HEDGE kW；"quantile"：逐时段滚动分位数
+HEDGE_PARAM = 0.80                # quantile 模式的分位水平（= 报童解析值 1−1/k）
+HEDGE_WIN = 60                    # quantile 模式的回看窗口天数
 ADAPT = 0.2                       # 负载当日自适应修正限幅（用已发生时段的实际/预报之比缩放剩余预报）
 EPS_CUR = 1e-6                    # 弃光松弛的极小系数（仅用于打破简并，不改变最优值）
 PV_HIST_N = 3                     # 历史外推所用天数
@@ -264,17 +278,41 @@ def build_load_forecast(L, L1, dates, decide_h=DECIDE_H, lag=LOAD_LAG, adapt=0.0
     return out
 
 
+def build_hedge_q3(L, L1, dates, q=HEDGE_PARAM, win=HEDGE_WIN,
+                   decide_h=DECIDE_H, lag=LOAD_LAG, adapt=ADAPT):
+    """构造逐日逐时段的安全裕量矩阵 (D, 144)
+
+    与问题二同一套报童分位逻辑，但误差取**负载预报误差** L − F_L
+    （问题三的裕量只加在负载预报上，光伏另有附件3 的预报渠道）。
+
+    注意问题三的临界分位与问题二不同：
+      计划阶段是「π 对 5π」⟹ 1−1/k = 0.80；
+      调整阶段因多付 1.5π / 退 0.5π ⟹ (5−1.5)/((5−1.5)+1.5) = 0.70。
+      两阶段共用同一裕量，故最优值落在 0.70~0.80 之间（实测见 q3_裕量寻优.txt）。
+    """
+    F0 = build_load_forecast(L, L1, dates, decide_h, lag, adapt)[0]
+    return q2.build_hedge(L - F0, "quantile", q, win)
+
+
 def run_year(df3, dates, L, G, pi, L1, G1, decide_h=DECIDE_H, mix=PV_MIX,
-             hedge=HEDGE, adapt=ADAPT, quiet=False):
+             hedge=None, adapt=ADAPT, quiet=False):
     """跑完整一年，返回 (recs, 汇总字典)
 
     逐日储能初值连续（当天 24:00 的储电量接到次日 0:00）。
+    hedge=None 时按模块配置 HEDGE_MODE 决定裕量：
+        "quantile" → 逐日逐时段分位数矩阵；"scalar" → 全天固定 HEDGE kW。
+    也可显式传入标量（用于 q3_tune.py 之类的参数扫描）或 (D,144) 矩阵。
     """
     Gf = build_pv_forecast(df3, dates, G, decide_h, mix)
     Lf = build_load_forecast(L, L1, dates, decide_h, LOAD_LAG, adapt)
+    if hedge is None:
+        hedge = (build_hedge_q3(L, L1, dates, HEDGE_PARAM, HEDGE_WIN,
+                                decide_h, LOAD_LAG, adapt)
+                 if HEDGE_MODE == "quantile" else HEDGE)
     recs, E_start = [], SOC0
     for i, day in enumerate(dates):
-        r = run_day(pi, Lf[:, i], Gf[:, i], L[i], G[i], E_start, decide_h, hedge)
+        h = hedge if np.isscalar(hedge) else hedge[i]
+        r = run_day(pi, Lf[:, i], Gf[:, i], L[i], G[i], E_start, decide_h, h)
         r["date"] = day
         recs.append(r)
         E_start = r["E24"]
@@ -307,7 +345,7 @@ def summarize(recs, out_start=OUT_START):
 
 
 def main():
-    global PV_MIX, HEDGE, ADAPT, TXT_Q3
+    global PV_MIX, HEDGE, HEDGE_MODE, ADAPT, TXT_Q3
     args = [a for a in sys.argv[1:]]
     if args and args[0] == "ablate":
         return ablation()
@@ -317,6 +355,7 @@ def main():
         PV_MIX = float(args[0])
     if len(args) > 1:
         HEDGE = float(args[1])
+        HEDGE_MODE = "scalar"        # 显式给了裕量就按标量口径跑（供参数扫描用）
     if len(args) > 2:
         ADAPT = float(args[2])
     TXT_Q3 = ("q3_结果汇总.txt" if is_default
@@ -334,14 +373,16 @@ def main():
     log(f"光伏预报口径：附件3『预报k小时』= 发布后第 k 个整点时刻的点值 → 整点线性插值到 10 分钟时段")
     log(f"光伏预报组合：{PV_MIX:.0%} 附件3 + {1 - PV_MIX:.0%} 前 {PV_HIST_N} 天滑动平均"
         f"（附件3 单用 MAE 191.7 kW，历史外推 152.7 kW，混合后 130.6 kW）")
-    log(f"负载日前预测：上周同一天（lag={LOAD_LAG} 天，只用历史）；安全裕量 {HEDGE:g} kW")
-    log(f"负载当日自适应修正：限幅 ±{ADAPT:.0%}（用已发生时段的实际/预报之比缩放剩余预报）")
+    log(f"负载日前预测：上周同一天（lag={LOAD_LAG} 天，只用历史）")
+    log(f"安全裕量口径：" + (f"逐时段取历史 {HEDGE_WIN} 天负载预报误差的 "
+        f"{HEDGE_PARAM:.2f} 分位数（报童模型）" if HEDGE_MODE == "quantile"
+        else f"全天固定 {HEDGE:g} kW"))
     log(f"购电费用口径：C_t = π_t·min(b^p_t, b^a_t) + 0.5π_t·(b^p_t−b^a_t)^+ + 1.5π_t·(b^a_t−b^p_t)^+")
     log("储能执行：逐槽被动平衡（与问题二完全同一口径），调整 LP 通过分段线性约束精确嵌入该规则")
 
     # ---------- 全年求解 ----------
     rule("【2】全年滚动求解")
-    recs, s = run_year(df3, dates, L, G, pi, L1, G1, DECIDE_H, PV_MIX, HEDGE, ADAPT)
+    recs, s = run_year(df3, dates, L, G, pi, L1, G1, DECIDE_H, PV_MIX, None, ADAPT)
 
     # ---------- 汇总 ----------
     rule("【3】全年结果汇总（2025.2.1 - 12.31）")
@@ -489,7 +530,7 @@ def ablation():
     base = None
     rows = []
     for nm, ep in cases:
-        recs, s = run_year(df3, dates, L, G, pi, L1, G1, ep, PV_MIX, HEDGE, quiet=True)
+        recs, s = run_year(df3, dates, L, G, pi, L1, G1, ep, PV_MIX, None, quiet=True)
         if base is None:
             base = s["cost_total"]
         rows.append((nm, s["cost_total"], base - s["cost_total"],

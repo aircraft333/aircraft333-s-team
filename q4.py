@@ -92,6 +92,9 @@ def run_year(PI, dates, L, G, L1, G1, df3, mode="q2"):
     if mode == "q3":
         Gf = q3.build_pv_forecast(df3, dates, G, q3.DECIDE_H, q3.PV_MIX)
         Lf = q3.build_load_forecast(L, L1, dates, q3.DECIDE_H, q3.LOAD_LAG, q3.ADAPT)
+        # 裕量口径与 q3.py 保持一致（分位数模式给逐日矩阵，标量模式给常数）
+        X3 = (q3.build_hedge_q3(L, L1, dates) if q3.HEDGE_MODE == "quantile"
+              else q3.HEDGE)
     else:
         F_L, F_G = q2.build_forecast(L, G, L1, G1, q2.FC_SPEC)
         err = (L - G) - (F_L - F_G)
@@ -103,8 +106,9 @@ def run_year(PI, dates, L, G, L1, G1, df3, mode="q2"):
     for i, day in enumerate(dates):
         pi = PI[i]                                     # 当天电价（0:00 已知）
         if mode == "q3":
+            h = X3 if np.isscalar(X3) else X3[i]
             r = q3.run_day(pi, Lf[:, i], Gf[:, i], L[i], G[i], E_start,
-                           q3.DECIDE_H, q3.HEDGE)
+                           q3.DECIDE_H, h)
         else:
             r = run_day_q2(pi, Lp[i], Gp[i], L[i], G[i], E_start)
         r["info"] = r.get("epochs_info", r.get("info", []))   # 统一键名
@@ -252,9 +256,14 @@ def main():
         f"（std {PI.mean(axis=1).std():.4f}）")
     log(f"            日内峰谷比：均值 {(PI.max(axis=1) / np.maximum(PI.min(axis=1), 1e-6)).mean():.2f}"
         f"（附件1 固定电价下为 {pi1.max() / pi1.min():.2f}）")
-    log(f"问题二口径：日前预测 {q2.FC_SPEC} + 安全裕量 {q2.HEDGE_PARAM:g} kW")
+    log(f"问题二口径：日前预测 {q2.FC_SPEC} + 安全裕量 "
+        + (f"逐时段历史 {q2.HEDGE_WIN} 天误差的 {q2.HEDGE_PARAM:.2f} 分位数"
+           if q2.HEDGE_MODE == "quantile" else f"固定 {q2.HEDGE_PARAM:g} kW"))
     log(f"问题三口径：光伏预报 {q3.PV_MIX:.0%} 附件3 + {1 - q3.PV_MIX:.0%} 历史；"
-        f"裕量 {q3.HEDGE:g} kW；负载自适应 ±{q3.ADAPT:.0%}；决策时刻 {q3.DECIDE_H}")
+        f"裕量 "
+        + (f"逐时段历史 {q3.HEDGE_WIN} 天负载误差的 {q3.HEDGE_PARAM:.2f} 分位数"
+           if q3.HEDGE_MODE == "quantile" else f"固定 {q3.HEDGE:g} kW")
+        + f"；负载自适应 ±{q3.ADAPT:.0%}；决策时刻 {q3.DECIDE_H}")
 
     # ---------- 重算问题二 ----------
     rule("【2】波动电价下重算问题二")
@@ -268,7 +277,7 @@ def main():
 
     rule("【4】固定电价 vs 波动电价")
     log(f"  {'口径':<22s} {'固定电价(附件1)':>18s} {'波动电价(附件4)':>18s} {'变化':>16s}")
-    fixed = {"对应问题二": 13949108.5, "对应问题三": 13847475.1}   # 来自 q2.py / q3.py 全年结果
+    fixed = {"对应问题二": 13949108.5, "对应问题三": 13598164.7}   # 来自 q2.py / q3.py 全年结果
     q2_plan_kwh = 21442248.8                          # 问题二全年计划购电量（用于算平均单价）
     for nm, c, f in (("对应问题二", c2, fixed["对应问题二"]),
                      ("对应问题三", c3, fixed["对应问题三"])):
