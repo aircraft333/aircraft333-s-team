@@ -154,6 +154,43 @@ def stat_line(name, arr, unit=""):
         f"极差/均值={np.ptp(arr) / arr.mean():6.2f}   ({unit})".rstrip())
 
 
+# ---------------------------------------------------------------------
+# xlsx 写入预检（Windows 上 Excel 会独占工作簿）
+# ---------------------------------------------------------------------
+def xlsx_locked(path):
+    """检测 xlsx 是否被其他进程占用。
+
+    占用时返回锁文件路径（Excel 生成的 `~$名字.xlsx`）或文件本身，反之返回 None。
+    """
+    path = resolve(path)
+    lock = os.path.join(os.path.dirname(path), "~$" + os.path.basename(path))
+    try:
+        with open(path, "r+b"):          # 独占句柄存在时这里会抛 PermissionError
+            pass
+    except FileNotFoundError:
+        return None
+    except PermissionError:
+        return lock if os.path.exists(lock) else path
+    return None
+
+
+def save_wb(wb, path):
+    """保存 openpyxl 工作簿；被 Excel 占用时给出可操作的中文报错。
+
+    直接 `wb.save()` 抛的是裸 `PermissionError: [Errno 13]`，错误信息里只有路径，
+    分不清是权限问题还是「Excel 还开着」。这里提前探测并把该关哪个文件说清楚。
+    """
+    path = resolve(path)
+    locked = xlsx_locked(path)
+    if locked is not None:
+        raise PermissionError(
+            "无法写入 {0}：文件正被 Excel 占用。\n"
+            "  请先关闭 Excel 中的该文件再重跑；锁文件 = {1}".format(
+                os.path.basename(path), os.path.basename(locked)))
+    wb.save(path)
+    return path
+
+
 # =====================================================================
 # 五、时间处理
 # =====================================================================
@@ -440,6 +477,7 @@ __all__ = [
     "setup_plot", "save_fig",
     # 报告
     "REPORT", "log", "rule", "write_report", "stat_line",
+    "xlsx_locked", "save_wb",
     # 时间
     "parse_time_to_min", "to_min", "fmt",
     # 数据

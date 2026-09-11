@@ -38,27 +38,44 @@
     仿真得到，是已知量。由于逐槽规则无前瞻，「全天仿真 = 分段仿真拼接」，滚动自洽。
 
 命令行
-    python q3.py                     # 主方案，写 result3.xlsx
-    python q3.py <pv_mix> <hedge>    # 指定附件3 与历史外推的混合权重、安全裕量
-    python q3.py ablate              # 逐时刻预报的边际价值分析（论文第 3 问末段）
+    python q3.py                            # 主方案（写 result3.xlsx）
+    python q3.py <pv_mix> <hedge> <adapt>   # 覆盖默认参数
+    python q3.py ablate                     # 各时刻预报的边际价值分析（论文第 3 问末段）
 """
 import sys
 
 import openpyxl
 import pulp
 
+import q2                      # 复用 q2.build_hedge（报童分位裕量）
 from config import *
 
-# ==================== 运行配置 ====================
+# ==================== 运行配置（默认值 = q3_tune.py 区块寻优结果） ====================
 REL_H = (0, 6, 12, 18)            # 附件3 的预报发布时刻（题目给定，不可改）
 DECIDE_H = (0, 6, 12, 18)         # 实际做决策 / 调整的时刻（可加密；每个时刻取最近一次已发布预报）
 LOAD_LAG = 7                      # 负载日前预测：上周同一天
 PV_MIX = 0.4                      # 光伏预报 = mix·附件3(整点插值) + (1−mix)·前3天均值
-HEDGE = 0.0                       # 加在负载预报上的安全裕量 (kW)
+HEDGE = 300.0                     # 标量模式下的固定裕量 (kW)，作用于计划与调整两个阶段
+# 安全裕量口径（`q3_hedge_q.py` + `q3_tune_plot.py` → `q3_裕量寻优.txt` / `q3_裕量灵敏度.txt`）
+# 报童模型在两个阶段给出不同的临界分位：
+#   计划阶段「多买 π 对 缺了按 5π 补」        ⇒ 1−1/k = 0.80
+#   调整阶段「多买 1.5π 对 缺了按 5π 补」      ⇒ (5−1.5)/((5−1.5)+1.5) = 0.70
+# 两阶段共用同一个裕量 ⟹ 最优点**应落在 0.70~0.80**（这是先验预测，不是事后挑的）。
+# 全年 334 天实测曲线（`figures/q3/fig_裕量灵敏度.png`）：
+#     q=0.70 → 13,624,983.0（+0.26%）  q=0.75 → 13,589,362.4 ← 采用（恰在预测区间中点）
+#     q=0.80 → 13,598,164.7（+0.065%） q=0.85 → 13,668,602.1（+0.58%）
+#     q=0.90 → 13,853,989.1（+1.95%）
+# 基线：固定 300 kW 全年 13,847,475.1 元（日均裕量 300 kW）
+# ⇒ 采用 q=0.75（日均裕量 130 kW），比固定 300 kW 省 258,113 元（1.86%）
+HEDGE_MODE = "quantile"           # "scalar"：全天固定 HEDGE kW；"quantile"：逐时段滚动分位数
+HEDGE_PARAM = 0.75                # quantile 模式的分位水平（落在两阶段临界分位 0.70~0.80 内）
+HEDGE_WIN = 60                    # quantile 模式的回看窗口天数
+ADAPT = 0.2                       # 负载当日自适应修正限幅（用已发生时段的实际/预报之比缩放剩余预报）
 EPS_CUR = 1e-6                    # 弃光松弛的极小系数（仅用于打破简并，不改变最优值）
 PV_HIST_N = 3                     # 历史外推所用天数
 OUT_START = "2025-02-01"
 TXT_Q3 = "q3_结果汇总.txt"
+OUT_KEY3 = "q3_题目指定日期表格.xlsx"      # 题目要求的表1/表2/表3（4 个指定日期）
 KEY_DATES = ["2025-03-20", "2025-06-21", "2025-09-23", "2025-12-21"]
 
 IDX4H = [(0, 24), (24, 48), (48, 72), (72, 96), (96, 120), (120, 144)]   # 6 个 4 小时段
@@ -207,7 +224,6 @@ def cost_dev(pi, bp, ba):
 # =====================================================================
 def run_day(pi, Lf_all, Gf_all, L, G, E_start, decide_h=DECIDE_H, hedge=HEDGE):
     """滚动求解一天，返回该日的全部结果
-
     Lf_all / Gf_all : 与 decide_h 同序的逐槽预报；decide_h[0] 必须是 0
     """
     # --- 0:00 计划（依据 0:00 预报）---
@@ -264,6 +280,49 @@ def build_load_forecast(L, L1, dates, decide_h=DECIDE_H, lag=LOAD_LAG, adapt=0.0
     return out
 
 
+def build_hedge_q3(L, L1, dates, q=HEDGE_PARAM, win=HEDGE_WIN,
+                   decide_h=DECIDE_H, lag=LOAD_LAG, adapt=ADAPT):
+    """构造逐日逐时段的安全裕量矩阵 (D, 144)
+
+    与问题二同一套报童分位逻辑，但误差取**负载预报误差** L − F_L
+    （问题三的裕量只加在负载预报上，光伏另有附件3 的预报渠道）。
+
+    注意问题三的临界分位与问题二不同：
+      计划阶段是「π 对 5π」⟹ 1−1/k = 0.80；
+      调整阶段因多付 1.5π / 退 0.5π ⟹ (5−1.5)/((5−1.5)+1.5) = 0.70。
+      两阶段共用同一裕量，故最优值落在 0.70~0.80 之间（实测见 q3_裕量寻优.txt）。
+    """
+    F0 = build_load_forecast(L, L1, dates, decide_h, lag, adapt)[0]
+    return q2.build_hedge(L - F0, "quantile", q, win)
+
+
+def run_year(df3, dates, L, G, pi, L1, G1, decide_h=DECIDE_H, mix=PV_MIX,
+             hedge=None, adapt=ADAPT, quiet=False):
+    """跑完整一年，返回 (recs, 汇总字典)
+
+    逐日储能初值连续（当天 24:00 的储电量接到次日 0:00）。
+    hedge=None 时按模块配置 HEDGE_MODE 决定裕量：
+        "quantile" → 逐日逐时段分位数矩阵；"scalar" → 全天固定 HEDGE kW。
+    也可显式传入标量（用于 q3_tune.py 之类的参数扫描）或 (D,144) 矩阵。
+    """
+    Gf = build_pv_forecast(df3, dates, G, decide_h, mix)
+    Lf = build_load_forecast(L, L1, dates, decide_h, LOAD_LAG, adapt)
+    if hedge is None:
+        hedge = (build_hedge_q3(L, L1, dates, HEDGE_PARAM, HEDGE_WIN,
+                                decide_h, LOAD_LAG, adapt)
+                 if HEDGE_MODE == "quantile" else HEDGE)
+    recs, E_start = [], SOC0
+    for i, day in enumerate(dates):
+        h = hedge if np.isscalar(hedge) else hedge[i]
+        r = run_day(pi, Lf[:, i], Gf[:, i], L[i], G[i], E_start, decide_h, h)
+        r["date"] = day
+        recs.append(r)
+        E_start = r["E24"]
+        if not quiet and (i + 1) % 60 == 0:
+            log(f"    已完成 {i + 1}/{len(dates)} 天 …")
+    return recs, summarize(recs)
+
+
 def summarize(recs, out_start=OUT_START):
     """按输出起始日期汇总全年结果"""
     out = [r for r in recs if r["date"] >= pd.Timestamp(out_start)]
@@ -288,7 +347,7 @@ def summarize(recs, out_start=OUT_START):
 
 
 def main():
-    global PV_MIX, HEDGE, TXT_Q3
+    global PV_MIX, HEDGE, HEDGE_MODE, ADAPT, TXT_Q3
     args = [a for a in sys.argv[1:]]
     if args and args[0] == "ablate":
         return ablation()
@@ -298,7 +357,11 @@ def main():
         PV_MIX = float(args[0])
     if len(args) > 1:
         HEDGE = float(args[1])
-    TXT_Q3 = "q3_结果汇总.txt" if is_default else f"q3_结果汇总_m{PV_MIX:g}h{HEDGE:g}.txt"
+        HEDGE_MODE = "scalar"        # 显式给了裕量就按标量口径跑（供参数扫描用）
+    if len(args) > 2:
+        ADAPT = float(args[2])
+    TXT_Q3 = ("q3_结果汇总.txt" if is_default
+              else f"q3_结果汇总_m{PV_MIX:g}h{HEDGE:g}a{ADAPT:g}.txt")
 
     # ---------- 数据 ----------
     A1 = att1_arrays(load_att1())
@@ -312,13 +375,19 @@ def main():
     log(f"光伏预报口径：附件3『预报k小时』= 发布后第 k 个整点时刻的点值 → 整点线性插值到 10 分钟时段")
     log(f"光伏预报组合：{PV_MIX:.0%} 附件3 + {1 - PV_MIX:.0%} 前 {PV_HIST_N} 天滑动平均"
         f"（附件3 单用 MAE 191.7 kW，历史外推 152.7 kW，混合后 130.6 kW）")
-    log(f"负载日前预测：上周同一天（lag={LOAD_LAG} 天，只用历史）；安全裕量 {HEDGE:g} kW")
+    log(f"负载日前预测：上周同一天（lag={LOAD_LAG} 天，只用历史）")
+    log(f"安全裕量口径：" + (f"逐时段取历史 {HEDGE_WIN} 天负载预报误差的 "
+        f"{HEDGE_PARAM:.2f} 分位数（报童模型）" if HEDGE_MODE == "quantile"
+        else f"全天固定 {HEDGE:g} kW"))
+    log(f"负载当日自适应修正：限幅 ±{ADAPT:.0%}（用当日已发生时段的实际/预报均值之比缩放剩余时段预报；"
+        f"实测使剩余时段 MAE 198.4 → 172.9 kW，降 12.9%）"
+        if ADAPT > 0 else "负载当日自适应修正：关闭（adapt=0）")
     log(f"购电费用口径：C_t = π_t·min(b^p_t, b^a_t) + 0.5π_t·(b^p_t−b^a_t)^+ + 1.5π_t·(b^a_t−b^p_t)^+")
     log("储能执行：逐槽被动平衡（与问题二完全同一口径），调整 LP 通过分段线性约束精确嵌入该规则")
 
     # ---------- 全年求解 ----------
     rule("【2】全年滚动求解")
-    recs, s = run_year(df3, dates, L, G, pi, L1, G1, DECIDE_H, PV_MIX, HEDGE)
+    recs, s = run_year(df3, dates, L, G, pi, L1, G1, DECIDE_H, PV_MIX, None, ADAPT)
 
     # ---------- 汇总 ----------
     rule("【3】全年结果汇总（2025.2.1 - 12.31）")
@@ -343,8 +412,9 @@ def main():
         if r is None:
             continue
         log(f"\n—— {ds} ——")
-        log(f"  各时刻储电量入口：" + "  ".join(
-            f"{h}:00 → {E:,.0f} kWh" for h, _t, E in r["epochs_info"]) if r["epochs_info"] else "")
+        if r["epochs_info"]:
+            log("  各时刻储电量入口：" + "  ".join(
+                f"{h}:00 → {E:,.0f} kWh" for h, _t, E in r["epochs_info"]))
         log("  表1 微网购电量（调整后）")
         log("      时间段           购电量(kWh)      时间段           购电量(kWh)")
         for j in range(0, 6, 2):
@@ -368,9 +438,13 @@ def main():
                 log(f"      {fmt_span(a, b):<16s} {r['e'][a // 10:b // 10].sum() * DT_H:>10.2f} kWh")
 
     write_report(TXT_Q3)
-    write_xlsx(recs, resolve(OUT3 if is_default else f"result3_m{PV_MIX:g}h{HEDGE:g}.xlsx"))
-    print(f"\n结果已写入 {resolve(OUT3 if is_default else 'result3_m%gh%g.xlsx' % (PV_MIX, HEDGE))}"
-          f"（{TXT_Q3} 为文字汇总）")
+    xlsx_path = resolve(OUT3 if is_default
+                        else f"result3_m{PV_MIX:g}h{HEDGE:g}a{ADAPT:g}.xlsx")
+    write_xlsx(recs, xlsx_path)
+    print(f"\n结果已写入 {xlsx_path}（{TXT_Q3} 为文字汇总）")
+    key_path = resolve(OUT_KEY3 if is_default
+                       else f"result3_指定日期表_m{PV_MIX:g}h{HEDGE:g}a{ADAPT:g}.xlsx")
+    print(f"题目指定日期的表1/表2/表3 已写入 {write_key_tables(recs, key_path)}")
 
 
 # =====================================================================
@@ -392,6 +466,87 @@ def seg_range(mask):
 
 def fmt_span(a, b):
     return f"{fmt(a)}-{fmt(b)}"
+
+
+def write_key_tables(recs, path, with_adj=True, dates=KEY_DATES):
+    """把「题目指定日期」的表1 / 表2 / 表3 导出为 Excel
+
+    这三张表原先**只在 q3_结果汇总.txt 的【4】节里以文本形式打印**，没有 Excel
+    交付物。这里补上，分三个工作表，可直接作为论文附件提交。
+
+    with_adj=True  → 表1 同时列出「计划」与「调整」两列（问题三口径，有调整阶段）
+    with_adj=False → 表1 只列「购电量」一列（问题二口径，无调整阶段）
+    返回实际写出的绝对路径。
+    """
+    days = [(ds, r) for ds in dates
+            for r in [next((x for x in recs if x["date"] == pd.Timestamp(ds)), None)]
+            if r is not None]
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+
+    # ---------------- 表1 微网购电量 ----------------
+    ws = wb.create_sheet("表1 购电量")
+    ws.append(["表1 微网购电量（kWh）"])
+    ws.append(["（时段为题目指定的 6 个代表时段，取该时段 10 分钟内的购电量）"])
+    ws.append([])
+    hdr = ["时间段"]
+    for ds, _r in days:
+        hdr += [f"{ds} 计划", f"{ds} 调整"] if with_adj else [f"{ds} 购电量"]
+    ws.append(hdr)
+    for k, lab in enumerate(LAB_REP):
+        row = [lab]
+        for _ds, r in days:
+            row.append(round(float(r["b_plan"][IDX_REP[k]] * DT_H), 4))
+            if with_adj:
+                row.append(round(float(r["b_adj"][IDX_REP[k]] * DT_H), 4))
+        ws.append(row)
+    ws.append([])
+    row = ["全天购电量合计"]
+    for _ds, r in days:
+        row.append(round(float(r["b_plan"].sum() * DT_H), 4))
+        if with_adj:
+            row.append(round(float(r["b_adj"].sum() * DT_H), 4))
+    ws.append(row)
+    row = ["全天购电费（元）"]
+    for _ds, r in days:
+        row.append(round(float(r["cost_plan"]), 4))
+        if with_adj:
+            row.append(round(float(r["cost_dev"]), 4))
+    ws.append(row)
+
+    # ---------------- 表2 储能充放电量 ----------------
+    ws = wb.create_sheet("表2 充放电量")
+    ws.append(["表2 储能充放电量（kWh）"])
+    ws.append([])
+    hdr = ["时段"]
+    for ds, _r in days:
+        hdr += [f"{ds} 充电", f"{ds} 放电"]
+    ws.append(hdr)
+    for k, lab in enumerate(LAB4H):
+        s0, s1 = IDX4H[k]
+        row = [lab]
+        for _ds, r in days:
+            row += [round(float(r["c"][s0:s1].sum() * DT_H), 4),
+                    round(float(r["d"][s0:s1].sum() * DT_H), 4)]
+        ws.append(row)
+    ws.append([])
+    for tag, key in (("0:00 储电量", "E0"), ("24:00 储电量", "E24")):
+        ws.append([tag] + [round(float(r[key]), 4) for _ds, r in days])
+
+    # ---------------- 表3 紧急购电 ----------------
+    ws = wb.create_sheet("表3 紧急购电")
+    ws.append(["表3 紧急购电"])
+    ws.append([])
+    ws.append(["日期", "购电时间段", "购电量（kWh）"])
+    for ds, r in days:
+        segs = seg_range(r["e"] > 1e-6)
+        if not segs:
+            ws.append([ds, "无紧急购电", 0.0])
+            continue
+        for a, b in segs:
+            ws.append([ds, fmt_span(a, b),
+                       round(float(r["e"][a // 10:b // 10].sum() * DT_H), 4)])
+    return save_wb(wb, path)
 
 
 def write_xlsx(recs, path):
@@ -438,9 +593,7 @@ def write_xlsx(recs, path):
             ws.cell(row=row, column=2, value=fmt_span(a, b))
             ws.cell(row=row, column=3, value=round(float(r["e"][a // 10:b // 10].sum() * DT_H), 4))
             row += 1
-    wb.save(path)
-
-
+    save_wb(wb, path)
 # =====================================================================
 # 七、分析：是否需要引入其他时刻的预报
 # =====================================================================
@@ -466,7 +619,7 @@ def ablation():
     base = None
     rows = []
     for nm, ep in cases:
-        recs, s = run_year(df3, dates, L, G, pi, L1, G1, ep, PV_MIX, HEDGE, quiet=True)
+        recs, s = run_year(df3, dates, L, G, pi, L1, G1, ep, PV_MIX, None, quiet=True)
         if base is None:
             base = s["cost_total"]
         rows.append((nm, s["cost_total"], base - s["cost_total"],
