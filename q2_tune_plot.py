@@ -69,10 +69,12 @@ def tot(rec):
 
 def main():
     setup_plot()
-    fig, axes = plt.subplots(2, 2, figsize=(14.2, 9.4))
+    # 拆成两张图，每张 1 行 2 列（便于在论文里单独插入与排版）；不再用总标题
+    figA, axA = plt.subplots(1, 2, figsize=(13.8, 4.8))
+    figB, axB = plt.subplots(1, 2, figsize=(13.8, 4.8))
 
     # ------------------------------------------------ (a) 分位水平 q
-    ax = axes[0, 0]
+    ax = axA[0]
     for data, win, col, ls in ((SCAN_Q_30, 30, C_PRICE, "-"),
                                (SCAN_Q_60, 60, OKABE, "--")):
         qs = [r[0] for r in data]
@@ -94,7 +96,7 @@ def main():
     ax.legend(fontsize=9)
 
     # ------------------------------------------------ (b) 回看窗口 win
-    ax = axes[0, 1]
+    ax = axA[1]
     ws = [r[1] for r in SCAN_W]
     ys = [tot(r) / 1e4 for r in SCAN_W]
     k = int(np.argmin(ys))
@@ -116,7 +118,7 @@ def main():
     ax.legend(["分位数规则", "最优点", "旧口径"], fontsize=9)
 
     # ------------------------------------------------ (c) 代表方案构成
-    ax = axes[1, 0]
+    ax = axB[0]
     names = [p[0] for p in PLANS]
     plan = np.array([p[1] for p in PLANS]) / 1e4
     emg = np.array([p[2] for p in PLANS]) / 1e4
@@ -137,7 +139,7 @@ def main():
     ax.legend(fontsize=9, loc="lower right")
 
     # ------------------------------------------------ (d) 日均裕量 vs 总费用
-    ax = axes[1, 1]
+    ax = axB[1]
     for data, nm, col, mk in ((SCAN_Q_60, "扫分位 q（win=60）", OKABE, "o"),
                               (SCAN_Q_30, "扫分位 q（win=30）", C_PRICE, "s"),
                               (SCAN_W, "扫回看窗口 win（q=0.76）", C_NET, "^")):
@@ -155,10 +157,10 @@ def main():
     ax.grid(alpha=.3)
     ax.legend(fontsize=8)
 
-    fig.suptitle("问题二安全裕量的参数寻优：分位水平 × 回看窗口（全年 334 天实测）",
-                 fontsize=14)
-    fig.tight_layout(rect=(0, 0, 1, .955))
-    save_fig(fig, "fig_裕量寻优.png", FIGDIR)
+    figA.tight_layout()
+    figB.tight_layout()
+    save_fig(figA, "fig_裕量寻优_参数扫描.png", FIGDIR)
+    save_fig(figB, "fig_裕量寻优_结果对比.png", FIGDIR)
 
     # ------------------------------------------------ 文字小结
     rule("问题二裕量参数寻优小结（图中数据）")

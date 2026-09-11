@@ -38,7 +38,7 @@ python q2_diag.py > q2_口径诊断.txt    # 储能执行口径对比诊断
 | `q2_diag.py` | 逐槽被动平衡 vs 完全信息最优 诊断 | `q2_口径诊断.txt` |
 | `q2_sensitivity.py` | **问题二敏感性：预测精度 / 紧急电价倍率 / 裕量分位数** | `figures/q2/fig_敏感性分析.png`、`q2_敏感性分析.txt` |
 | `q2_fine_tune.py` | **裕量参数精细寻优：分位水平 q × 回看窗口 win** | `q2_裕量精细寻优.txt` |
-| `q2_tune_plot.py` | 裕量寻优结果的绘图（只画图，不重算 LP） | `figures/q2/fig_裕量寻优.png`、`q2_裕量寻优.txt` |
+| `q2_tune_plot.py` | 裕量寻优结果的绘图（只画图，不重算 LP） | `figures/q2/fig_裕量寻优_参数扫描.png`（分位扫描 + 窗口扫描，1×2）、`figures/q2/fig_裕量寻优_结果对比.png`（方案构成 + 裕量 U 形，1×2）、`q2_裕量寻优.txt` |
 | `q2_tune_robust.py` | **裕量参数的样本外稳健性检验（分半比较）** | `q2_裕量稳健性检验.txt` |
 | **`q3.py`** | **问题三主程序**（0:00 / 6:00 / 12:00 / 18:00 四阶段滚动调整） | `result3.xlsx`、`q3_结果汇总.txt` |
 | `q3.py ablate` | 各时刻预报的边际价值分析 | `q3_预报时刻边际价值.txt` |
