@@ -136,7 +136,7 @@ def main():
     ax.set_xlim(0, 1750)
     ax.set_title("(c) 代表方案的费用构成")
     ax.grid(alpha=.3, axis="x")
-    ax.legend(fontsize=9, loc="lower right")
+    ax.legend(fontsize=9, loc="upper left")
 
     # ------------------------------------------------ (d) 日均裕量 vs 总费用
     ax = axB[1]
