@@ -38,9 +38,9 @@
     仿真得到，是已知量。由于逐槽规则无前瞻，「全天仿真 = 分段仿真拼接」，滚动自洽。
 
 命令行
-    python q3.py                     # 主方案，写 result3.xlsx
-    python q3.py <pv_mix> <hedge>    # 指定附件3 与历史外推的混合权重、安全裕量
-    python q3.py ablate              # 逐时刻预报的边际价值分析（论文第 3 问末段）
+    python q3.py                            # 主方案（写 result3.xlsx）
+    python q3.py <pv_mix> <hedge> <adapt>   # 覆盖默认参数
+    python q3.py ablate                     # 各时刻预报的边际价值分析（论文第 3 问末段）
 """
 import sys
 
@@ -49,12 +49,13 @@ import pulp
 
 from config import *
 
-# ==================== 运行配置 ====================
+# ==================== 运行配置（默认值 = q3_tune.py 区块寻优结果） ====================
 REL_H = (0, 6, 12, 18)            # 附件3 的预报发布时刻（题目给定，不可改）
 DECIDE_H = (0, 6, 12, 18)         # 实际做决策 / 调整的时刻（可加密；每个时刻取最近一次已发布预报）
 LOAD_LAG = 7                      # 负载日前预测：上周同一天
 PV_MIX = 0.4                      # 光伏预报 = mix·附件3(整点插值) + (1−mix)·前3天均值
-HEDGE = 0.0                       # 加在负载预报上的安全裕量 (kW)
+HEDGE = 300.0                     # 加在负载预报上的安全裕量 (kW)，作用于计划与调整两个阶段
+ADAPT = 0.2                       # 负载当日自适应修正限幅（用已发生时段的实际/预报之比缩放剩余预报）
 EPS_CUR = 1e-6                    # 弃光松弛的极小系数（仅用于打破简并，不改变最优值）
 PV_HIST_N = 3                     # 历史外推所用天数
 OUT_START = "2025-02-01"
@@ -264,6 +265,25 @@ def build_load_forecast(L, L1, dates, decide_h=DECIDE_H, lag=LOAD_LAG, adapt=0.0
     return out
 
 
+def run_year(df3, dates, L, G, pi, L1, G1, decide_h=DECIDE_H, mix=PV_MIX,
+             hedge=HEDGE, adapt=ADAPT, quiet=False):
+    """跑完整一年，返回 (recs, 汇总字典)
+
+    逐日储能初值连续（当天 24:00 的储电量接到次日 0:00）。
+    """
+    Gf = build_pv_forecast(df3, dates, G, decide_h, mix)
+    Lf = build_load_forecast(L, L1, dates, decide_h, LOAD_LAG, adapt)
+    recs, E_start = [], SOC0
+    for i, day in enumerate(dates):
+        r = run_day(pi, Lf[:, i], Gf[:, i], L[i], G[i], E_start, decide_h, hedge)
+        r["date"] = day
+        recs.append(r)
+        E_start = r["E24"]
+        if not quiet and (i + 1) % 60 == 0:
+            log(f"    已完成 {i + 1}/{len(dates)} 天 …")
+    return recs, summarize(recs)
+
+
 def summarize(recs, out_start=OUT_START):
     """按输出起始日期汇总全年结果"""
     out = [r for r in recs if r["date"] >= pd.Timestamp(out_start)]
@@ -288,7 +308,7 @@ def summarize(recs, out_start=OUT_START):
 
 
 def main():
-    global PV_MIX, HEDGE, TXT_Q3
+    global PV_MIX, HEDGE, ADAPT, TXT_Q3
     args = [a for a in sys.argv[1:]]
     if args and args[0] == "ablate":
         return ablation()
@@ -298,7 +318,10 @@ def main():
         PV_MIX = float(args[0])
     if len(args) > 1:
         HEDGE = float(args[1])
-    TXT_Q3 = "q3_结果汇总.txt" if is_default else f"q3_结果汇总_m{PV_MIX:g}h{HEDGE:g}.txt"
+    if len(args) > 2:
+        ADAPT = float(args[2])
+    TXT_Q3 = ("q3_结果汇总.txt" if is_default
+              else f"q3_结果汇总_m{PV_MIX:g}h{HEDGE:g}a{ADAPT:g}.txt")
 
     # ---------- 数据 ----------
     A1 = att1_arrays(load_att1())
@@ -313,12 +336,13 @@ def main():
     log(f"光伏预报组合：{PV_MIX:.0%} 附件3 + {1 - PV_MIX:.0%} 前 {PV_HIST_N} 天滑动平均"
         f"（附件3 单用 MAE 191.7 kW，历史外推 152.7 kW，混合后 130.6 kW）")
     log(f"负载日前预测：上周同一天（lag={LOAD_LAG} 天，只用历史）；安全裕量 {HEDGE:g} kW")
+    log(f"负载当日自适应修正：限幅 ±{ADAPT:.0%}（用已发生时段的实际/预报之比缩放剩余预报）")
     log(f"购电费用口径：C_t = π_t·min(b^p_t, b^a_t) + 0.5π_t·(b^p_t−b^a_t)^+ + 1.5π_t·(b^a_t−b^p_t)^+")
     log("储能执行：逐槽被动平衡（与问题二完全同一口径），调整 LP 通过分段线性约束精确嵌入该规则")
 
     # ---------- 全年求解 ----------
     rule("【2】全年滚动求解")
-    recs, s = run_year(df3, dates, L, G, pi, L1, G1, DECIDE_H, PV_MIX, HEDGE)
+    recs, s = run_year(df3, dates, L, G, pi, L1, G1, DECIDE_H, PV_MIX, HEDGE, ADAPT)
 
     # ---------- 汇总 ----------
     rule("【3】全年结果汇总（2025.2.1 - 12.31）")
@@ -368,8 +392,8 @@ def main():
                 log(f"      {fmt_span(a, b):<16s} {r['e'][a // 10:b // 10].sum() * DT_H:>10.2f} kWh")
 
     write_report(TXT_Q3)
-    write_xlsx(recs, resolve(OUT3 if is_default else f"result3_m{PV_MIX:g}h{HEDGE:g}.xlsx"))
-    print(f"\n结果已写入 {resolve(OUT3 if is_default else 'result3_m%gh%g.xlsx' % (PV_MIX, HEDGE))}"
+    write_xlsx(recs, resolve(OUT3 if is_default else f"result3_m{PV_MIX:g}h{HEDGE:g}a{ADAPT:g}.xlsx"))
+    print(f"\n结果已写入 {resolve(OUT3 if is_default else 'result3_m%gh%ga%g.xlsx' % (PV_MIX, HEDGE, ADAPT))}"
           f"（{TXT_Q3} 为文字汇总）")
 
 

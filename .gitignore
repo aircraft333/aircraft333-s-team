@@ -13,3 +13,22 @@
 
 # 如果你们各自在本地编译 PDF，建议也忽略 PDF（防止二进制 PDF 冲突）
 # *.pdf
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# 临时/探针脚本（下划线开头）与临时输出
+_*.py
+_*.txt
+
+# 手工备份目录（防止 git 操作把未提交的改动冲掉）
+_backup/
+
+# ---- Excel 打开文件时生成的锁文件 ----
+~$*.xlsx
+~$*.xls
+
+# ---- 本地生成的图片（figures/ 下按问号分子目录） ----
+# figures/

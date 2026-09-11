@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Q2 执行口径诊断：逐槽法 vs 每日最优（完全信息 LP）
+"""Q2 执行口径诊断：逐槽被动平衡 vs 每日完全信息最优
 
-目的：看清两者的差别究竟来自哪里 —— 是"储能吞吐总量"还是"紧急购电的时段选择"。
+目的：看清两者的差别究竟来自哪里 —— 是「储能吞吐总量」还是「紧急购电的时段选择」。
 输出：各口径的费用、紧急购电量按峰/平/谷拆解、紧急购电的逐小时分布。
+运行：python q2_diag.py（结果同时写入 q2_口径诊断.txt）
 """
 import numpy as np
-import pulp
 
 import q2
 from config import *
+
+solve_rt = q2.solve_rt          # 对照口径的 LP 直接复用 q2.py，避免两份实现漂移
 
 A1 = att1_arrays(load_att1())
 pi, L1, G1 = A1["price"], A1["load"], A1["pv"]
@@ -23,26 +25,6 @@ log("时段构成：" + "  ".join(
     for k in (TIER_V, TIER_F, TIER_P)))
 log("各档紧急购电单价 5π：" + "  ".join(
     f"{k} {5 * pi[tier == k].mean():.3f} 元/kWh" for k in (TIER_V, TIER_F, TIER_P)))
-
-
-def solve_rt(pi, L_real, G_real, b_fixed, E_start):
-    """每日最优（完全信息 LP）：已知当天实际 L/G，最优安排储能以最小化 5π 紧急购电"""
-    T = N_SLOT
-    m = pulp.LpProblem("rt", pulp.LpMinimize)
-    c = [pulp.LpVariable(f"c{t}", lowBound=0, upBound=P_RATE) for t in range(T)]
-    d = [pulp.LpVariable(f"d{t}", lowBound=0, upBound=P_RATE) for t in range(T)]
-    e = [pulp.LpVariable(f"e{t}", lowBound=0) for t in range(T)]
-    E = [pulp.LpVariable(f"E{t}", lowBound=SOC_MIN, upBound=SOC_MAX) for t in range(T)]
-    m += pulp.lpSum(5.0 * pi[t] * e[t] * DT_H for t in range(T))
-    for t in range(T):
-        m += e[t] >= L_real[t] - G_real[t] - b_fixed[t] - d[t] + c[t]
-        prev = E_start if t == 0 else E[t - 1]
-        m += E[t] == prev + (ETA * c[t] - d[t] / ETA) * DT_H
-    m.solve(pulp.PULP_CBC_CMD(msg=False))
-    if pulp.LpStatus[m.status] != "Optimal":
-        raise RuntimeError(pulp.LpStatus[m.status])
-    return {k: np.array([v.value() for v in a])
-            for k, a in (("e", e), ("c", c), ("d", d), ("E", E))}
 
 
 def run(mode):
@@ -78,7 +60,7 @@ log("\n" + "=" * 78)
 log("正在跑两种口径的全年对比 …")
 R = {m: run(m) for m in ("greedy", "best")}
 
-for m, nm in (("greedy", "逐槽法（因果，无前瞻）"), ("best", "每日最优（完全信息 LP）")):
+for m, nm in (("greedy", "逐槽被动平衡（因果，无前瞻）"), ("best", "每日完全信息最优（事后下界）")):
     r = R[m]
     log(f"\n【{nm}】（2025.2.1-12.31，{r['n_days']} 天）")
     log(f"  计划购电量 {r['q_plan']:>14,.1f} kWh   计划购电费 {r['cost_plan']:>14,.1f} 元")
@@ -108,3 +90,5 @@ for h in range(24):
         pr = 5 * pi[6 * h:6 * h + 6].mean()
         bar = "#" * int(x / 8000)
         log(f"  {h:2d}:00 {x:>10,.0f} {y:>12,.0f}      {pr:>5.2f}   {bar}")
+
+write_report("q2_口径诊断.txt")
