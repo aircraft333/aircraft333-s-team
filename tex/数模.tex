@@ -520,7 +520,87 @@ $X_{d,t}$ 即为裕量。最终等效预测负荷：
         
         \section{问题四模型的建立与求解}
         \subsection{模型建立}
-        \subsection{约束条件} 
+        问题四紧承问题二三，在前两问的基础上增加了波动但完全已知的外网电价。在我们的求解模型中，并未加入新的决策机制，而是将前两问的模型整体搬到电价不再固定的环境下，证明了其适应性与经济性。直接套用模型这一做法的合理性将在后文做出证明。
+        分析附件四的电价数据特征：
+        \begin{itemize}
+            \item 整体形状与附件一中电价逐时段一一对应，且列均值恒等于附件1 的电价，最大绝对差仅 5.2e-5
+            \item 逐日均价在 0.5378 ~ 0.9290 之间漂移（标准差 0.1036），最高日与最低日相差 73%
+            \item 日内峰谷比均值 5.74，而附件1 固定电价下为 3.76
+        \end{itemize}
+        由此可以确认附件4 的生成结构：电价 = 附件1 的分时形状 + 逐日整体水平漂移 + 逐槽噪声：
+        \[
+            \frac{1}{365}\sum_{d=1}^{365}\pi_{d,t} \equiv \pi^{\mathrm{att1}}_t \qquad \left(\max_t |\cdot| = 5.2\times 10^{-5}\right)
+        \]
+
+        \[
+            \mathrm{R}_d = \frac{\max_t \pi_{d,t}}{\min_t \pi_{d,t}}, \qquad \overline{\mathrm{R}} = \frac{1}{365}\sum_{d}\mathrm{R}_d = 5.74
+        \]
+
+        这样的结构说明：首先，日内“谷充峰放”的套利空间依然存在，甚至比之前更大，因为峰谷比加大了。同时，出现了跨日套利空间，即在电价便宜的日期多充，在电价贵的日期多放。
+
+        电价趋势对比如图~\ref{fig:elec_price} 所示：
+
+        \begin{figure}[htbp]
+            \centering
+            \includegraphics[width=0.8\textwidth]{elec_price.pdf}
+            \caption{电价趋势对比}
+            \label{fig:elec_price}
+        \end{figure}
+        
+        \subsubsection{对应问题二：0时线性规划与实时逐槽被动平衡}
+        模型与问题二完全同构，只是把固定的 $\pi_t$ 换成逐日逐时段的 $\pi_{d,t}$。
+
+        \noindent\textbf{(1)0时线性规划}
+
+        决策变量：
+        \begin{itemize}
+            \item $b_t$：购电量
+            \item $c_t$：充电
+            \item $d_t$：放电
+            \item $s_t$：弃光
+            \item $E_t$：储电量
+        \end{itemize}
+        约束条件：
+        与问题二一致地，
+        \begin{itemize}
+            \item 日前功率平衡
+                  \[
+                  b_t + \hat{G}_{d,t} + d_t - c_t - s_t = \tilde{L}_{d,t},\qquad \forall t = 1,\dots,144
+                  \]
+            \item 储能动态容量演化与初值、上下限、非负性（与问题二完全一致，不再在此列出）
+        \end{itemize}
+        目标函数：
+        \[
+        \min\ \sum_{t=1}^{144}\pi_{d,t}\cdot b_t\cdot\Delta t
+        \]
+        安全裕量：
+        与问题二一致，逐时段取历史 30 天净负荷预测误差的 0.76 分位数。
+
+        \noindent\textbf{(2)实时逐槽法}
+        
+        求解方式为逐日滚动，储电量逐日连续传递。采取贪心算法，与问题二完全一致。
+        \subsubsection{对应问题三：四阶段滚动调整}
+        模型与问题三完全同构，利用线性规划与逐槽法的融合，只是把固定的 $\pi_t$ 换成逐日逐时段的 $\pi_{d,t}$。购电费用变为
+        \[
+        C_t = \pi_{d,t}\min(b^{p}_t,\ b^{a}_t) + 0.5\pi_{d,t}\left(b^{p}_t - b^{a}_t\right)^{+} + 1.5\pi_{d,t}\left(b^{a}_t - b^{p}_t\right)^{+}
+        \] 
+        线性化方式保持不变
+        \[
+        b^a_t = b^p_t + δ⁺_t − δ⁻_t，C_t = π_{d,t}b^p_t + 1.5π_{d,t}δ⁺_t − 0.5π_{d,t}δ⁻_t
+        \]
+        利用目标函数的凸性与成本梯级差，将非线性分段规则天然松弛并精确嵌入纯线性规划中（在问题三已有证明）。
+        滚动目标函数为
+        \[
+        \min\ \sum_{t=t_0}^{144}\left[\,C_t + 5\pi_{d,t}\,e_t\,\Delta t\,\right]
+        \]
+        其余口径与问题三一致
+        \begin{itemize}
+            \item 光伏预报取 40% 附件3 + 60% 前 3 天均值
+            \item 负载预报为上周同一天叠加当日自适应修正（限幅 ±20%）
+            \item 安全裕量为逐时段历史 60 天负载误差的 0.75 分位数
+            \item 决策时刻 (0, 6, 12, 18)
+        \end{itemize}
+        
         \subsection{模型求解}
         \section{模型的评价、改进与推广}
 
