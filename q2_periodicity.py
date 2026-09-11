@@ -16,7 +16,6 @@
 """
 import numpy as np
 
-import q2
 from config import *
 
 FIGDIR = os.path.join(DIR_FIG, "q2")
@@ -88,83 +87,109 @@ log(f"  -> lag7 相对 lag1 降低 {1 - res['上周同一天 lag7'] / ref:.1%}�
     f"相对附件1 基准日降低 {1 - res['上周同一天 lag7'] / res['附件1 基准日']:.1%}")
 
 # =====================================================================
-# 二、绘图
+# 二、绘图（四张独立单图 + 一张 2×2 组合图）
 # =====================================================================
 setup_plot()
-fig, axes = plt.subplots(2, 2, figsize=(13.5, 9))
 
-# ---- (a) 一周七天的平均曲线 ----
-ax = axes[0, 0]
 dmean = prof.mean(axis=1)
 LOW = np.where(dmean < dmean.mean())[0]          # 低负载日（实测为周五、周六）
 HIGH = np.where(dmean >= dmean.mean())[0]
-for k in HIGH:
-    ax.plot(HOURS, prof[k], lw=1.1, color="0.62", alpha=.8)
-for k in LOW:
-    ax.plot(HOURS, prof[k], lw=1.6, color=C_PV, alpha=.95, label=CN[k])
-ax.plot(HOURS, prof[HIGH].mean(axis=0), lw=3.0, color=C_LOAD,
-        label="高负载日均值（" + "、".join(CN[k] for k in HIGH) + "）")
-ax.plot(HOURS, prof[LOW].mean(axis=0), lw=3.0, color=C_PRICE,
-        label="低负载日均值（" + "、".join(CN[k] for k in LOW) + "）")
-ax.set_title(f"(a) 一周内各天的平均曲线：{len(HIGH)} 天高负载 + {len(LOW)} 天低负载，"
-             f"低负载日低 {abs(prof[LOW].mean() - prof[HIGH].mean()) / prof[HIGH].mean():.0%}",
-             fontsize=11)
-ax.set_xlabel("时刻 (h)")
-ax.set_ylabel("负载 (kW)")
-ax.set_xlim(0, 24)
-ax.set_xticks(np.arange(0, 25, 4))
-ax.grid(alpha=.3)
-ax.legend(fontsize=8, loc="upper left", ncol=1, framealpha=.8)
-
-# ---- (b) 同星期曲线叠加 ----
-ax = axes[0, 1]
-info_b = []
-for k, c in ((HIGH[0], C_LOAD), (LOW[0], C_PV)):
-    idx = np.where(DOW == k)[0]
-    for j in idx:
-        ax.plot(HOURS, L[j], lw=.6, color=c, alpha=.13)
-    ax.plot(HOURS, L[idx].mean(axis=0), lw=2.6, color=c,
-            label=f"{CN[k]}均值（{len(idx)} 天）")
-    info_b.append((CN[k], float(L[idx].std(axis=0).mean())))
-ax.set_title("(b) 全年同星期曲线叠加：同星期的离散带很窄（±"
-             + f"{np.mean([b for _n, b in info_b]):.0f} kW）", fontsize=11)
-ax.set_xlabel("时刻 (h)")
-ax.set_ylabel("负载 (kW)")
-ax.set_xlim(0, 24)
-ax.set_xticks(np.arange(0, 25, 4))
-ax.grid(alpha=.3)
-ax.legend(fontsize=8)
-
-# ---- (c) 自相关 ----
-ax = axes[1, 0]
 ks = np.arange(1, 22)
-rs = [cor[k] if k in cor else np.mean(
-    [np.corrcoef(L[lo - k:D - k, t], L[lo:D, t])[0, 1] for t in range(T)]) for k in ks]
-ax.bar(ks, rs, color=[C_PRICE if k % 7 == 0 else "0.72" for k in ks], width=.65)
-for k in (7, 14, 21):
-    ax.axvline(k, color=C_PRICE, ls="--", lw=.8, alpha=.5)
-ax.text(7.2, min(rs) + .02, "lag=7 峰", color=C_PRICE, fontsize=9)
-ax.text(14.2, min(rs) + .02, "lag=14 峰", color=C_PRICE, fontsize=9)
-ax.set_title("(c) 曲线自相关系数：在 7 天倍数处出现尖峰", fontsize=11)
-ax.set_xlabel("滞后天数")
-ax.set_ylabel("逐槽相关系数 r")
-ax.set_xticks(ks[::2])
-ax.grid(alpha=.3, axis="y")
-
-# ---- (d) 预测精度 ----
-ax = axes[1, 1]
+rs = np.array([cor[k] if k in cor else np.mean(
+    [np.corrcoef(L[lo - k:D - k, t], L[lo:D, t])[0, 1] for t in range(T)]) for k in ks])
 names = [m[0] for m in methods]
 vals = [res[n] for n in names]
-cols = [C_NET if n == "上周同一天 lag7" else ("0.72" if "lag1" not in n else C_PRICE)
-        for n in names]
-bars = ax.barh(names[::-1], vals[::-1], color=cols[::-1])
-for b, v in zip(bars, vals[::-1]):
-    ax.text(v + 3, b.get_y() + b.get_height() / 2, f"{v:.1f}", va="center", fontsize=8)
-ax.set_title("(d) 各类日前预测方法的逐槽 MAE：lag=7 最优", fontsize=11)
-ax.set_xlabel("MAE (kW)")
-ax.grid(alpha=.3, axis="x")
 
+
+def panel_a(ax):
+    """(a) 一周内各天的平均负载曲线"""
+    for k in HIGH:
+        ax.plot(HOURS, prof[k], lw=1.1, color="0.62", alpha=.8)
+    for k in LOW:
+        ax.plot(HOURS, prof[k], lw=1.6, color=C_PV, alpha=.95, label=CN[k] + "（低负载日）")
+    ax.plot(HOURS, prof[HIGH].mean(axis=0), lw=3.0, color=C_LOAD,
+            label="高负载日均值（" + "、".join(CN[k] for k in HIGH) + "）")
+    ax.plot(HOURS, prof[LOW].mean(axis=0), lw=3.0, color=C_PRICE,
+            label="低负载日均值（" + "、".join(CN[k] for k in LOW) + "）")
+    ax.set_title(f"(a) 一周内各天的平均曲线：{len(HIGH)} 天高负载 + {len(LOW)} 天低负载，"
+                 f"低负载日低 {abs(prof[LOW].mean() - prof[HIGH].mean()) / prof[HIGH].mean():.0%}",
+                 fontsize=11)
+    ax.set_xlabel("时刻 (h)")
+    ax.set_ylabel("负载 (kW)")
+    ax.set_xlim(0, 24)
+    ax.set_xticks(np.arange(0, 25, 4))
+    ax.grid(alpha=.3)
+    ax.legend(fontsize=8, loc="upper left", ncol=1, framealpha=.8)
+
+
+def panel_b(ax):
+    """(b) 全年同星期曲线叠加"""
+    info = []
+    for k, c in ((HIGH[0], C_LOAD), (LOW[0], C_PV)):
+        idx = np.where(DOW == k)[0]
+        for j in idx:
+            ax.plot(HOURS, L[j], lw=.6, color=c, alpha=.13)
+        ax.plot(HOURS, L[idx].mean(axis=0), lw=2.6, color=c,
+                label=f"{CN[k]}均值（{len(idx)} 天）")
+        info.append(float(L[idx].std(axis=0).mean()))
+    ax.set_title("(b) 全年同星期曲线叠加：同星期的离散带很窄（±"
+                 + f"{np.mean(info):.0f} kW）", fontsize=11)
+    ax.set_xlabel("时刻 (h)")
+    ax.set_ylabel("负载 (kW)")
+    ax.set_xlim(0, 24)
+    ax.set_xticks(np.arange(0, 25, 4))
+    ax.grid(alpha=.3)
+    ax.legend(fontsize=8)
+
+
+def panel_c(ax):
+    """(c) 自相关系数"""
+    ax.bar(ks, rs, color=[C_PRICE if k % 7 == 0 else "0.72" for k in ks], width=.65)
+    for k in (7, 14, 21):
+        ax.axvline(k, color=C_PRICE, ls="--", lw=.8, alpha=.5)
+    for k in (7, 14):
+        ax.annotate(f"lag={k},  r={rs[k - 1]:.3f}", xy=(k, rs[k - 1]),
+                    xytext=(k + .8, rs[k - 1] + .06), color=C_PRICE, fontsize=8,
+                    arrowprops=dict(arrowstyle="-", color=C_PRICE, lw=.8))
+    ax.set_title("(c) 曲线自相关系数：在 7 天倍数处出现尖峰", fontsize=11)
+    ax.set_xlabel("滞后天数（天）")
+    ax.set_ylabel("逐槽相关系数 r")
+    ax.set_xticks(ks[::2])
+    ax.set_ylim(min(-.3, rs.min() - .05), 1.08)
+    ax.grid(alpha=.3, axis="y")
+
+
+def panel_d(ax):
+    """(d) 各类预测方法的精度对比"""
+    cols = [C_NET if n == "上周同一天 lag7" else ("0.72" if "lag1" not in n else C_PRICE)
+            for n in names]
+    bars = ax.barh(names[::-1], vals[::-1], color=cols[::-1])
+    for b, v in zip(bars, vals[::-1]):
+        ax.text(v + 6, b.get_y() + b.get_height() / 2, f"{v:.1f}", va="center", fontsize=8)
+    ax.set_title("(d) 各类日前预测方法的逐槽 MAE：lag=7 最优", fontsize=11)
+    ax.set_xlabel("MAE (kW)")
+    ax.set_xlim(0, max(vals) * 1.18)
+    ax.grid(alpha=.3, axis="x")
+
+
+PANELS = [("figA_周内各天平均曲线", panel_a), ("figB_同星期曲线叠加", panel_b),
+          ("figC_自相关系数", panel_c), ("figD_预测方法精度对比", panel_d)]
+
+# ---------- 四张独立单图（论文按需单张插入）----------
+for nm, fn in PANELS:
+    f, a = plt.subplots(figsize=(6.8, 4.4))
+    fn(a)
+    f.tight_layout()
+    save_fig(f, nm + ".png", FIGDIR)
+    plt.close(f)
+
+# ---------- 一张 2×2 组合图（便于一眼看全）----------
+fig, axes = plt.subplots(2, 2, figsize=(13.5, 9))
+for a, (_nm, fn) in zip(axes.ravel(), PANELS):
+    fn(a)
 fig.suptitle("小区负载的周周期性 —— 支撑第二问「用上周同一天预测负载」的合理性", fontsize=13)
 fig.tight_layout(rect=(0, 0, 1, .965))
 save_fig(fig, "fig_负载周周期性.png", FIGDIR)
+plt.close(fig)
+
 write_report(TXT)

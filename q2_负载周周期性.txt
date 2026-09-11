@@ -47,4 +47,8 @@
   前7天均值 lag7 混合              407.96      -37.3%
   附件1 基准日                    791.51      +21.7%
   -> lag7 相对 lag1 降低 73.0%，相对附件1 基准日降低 77.8%
+    → 已保存 figures\q2\figA_周内各天平均曲线.png
+    → 已保存 figures\q2\figB_同星期曲线叠加.png
+    → 已保存 figures\q2\figC_自相关系数.png
+    → 已保存 figures\q2\figD_预测方法精度对比.png
     → 已保存 figures\q2\fig_负载周周期性.png

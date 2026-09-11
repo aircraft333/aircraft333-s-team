@@ -208,7 +208,6 @@ def cost_dev(pi, bp, ba):
 # =====================================================================
 def run_day(pi, Lf_all, Gf_all, L, G, E_start, decide_h=DECIDE_H, hedge=HEDGE):
     """滚动求解一天，返回该日的全部结果
-
     Lf_all / Gf_all : 与 decide_h 同序的逐槽预报；decide_h[0] 必须是 0
     """
     # --- 0:00 计划（依据 0:00 预报）---
