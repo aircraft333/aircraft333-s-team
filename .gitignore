@@ -32,3 +32,5 @@ _backup/
 
 # ---- 本地生成的图片（figures/ 下按问号分子目录） ----
 # figures/
+
+__pycache__/
