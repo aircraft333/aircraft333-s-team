@@ -94,11 +94,13 @@ python q2_diag.py > q2_口径诊断.txt    # 储能执行口径对比诊断
 - ⚠️ **文件名大小写冲突（重要）**：队友的另一份第二问实现被命名为 `Q2.py`（大写）。
   Windows 文件系统大小写不敏感，两者**不能共存** —— 它会直接顶掉我们的 `q2.py`，
   导致 `import q2` 全部报 `ModuleNotFoundError`。
-  **处理办法**：队友那份已另存为 `Q2_teammate_scipy.py`；万一 `q2.py` 又不见了，执行
+  **处理办法**：队友那份已另存为 `Q2_teammate_scipy.py`；**git 索引里的 `Q2.py` 条目也已清除**
+  （`git update-index --force-remove Q2.py`），以后再执行 `git checkout` **不会再**把 `q2.py` 顶掉。
+  万一本地的 `q2.py` 又被覆盖，执行：
   ```powershell
-  git checkout HEAD -- q2.py
+  Copy-Item _backup\q2.py q2.py -Force
   ```
-  即可恢复（但会丢掉本地未提交的改动，如 `HEDGE_PARAM` 的取值）。**建议让队友把文件改名**。
+  或 `git checkout HEAD -- q2.py` 即可恢复。**仍建议让队友把物理文件改名**。
 - **写 xlsx 前先关闭 Excel**，否则报 `PermissionError`。目录里的 `~$*.xlsx` 是 Excel 的锁文件，已加入 `.gitignore`。
 - 不要改动 `result/` 里的官方模板。
 - `q2_*.py`、`q3_*.py` 这些分析脚本大多是**直接运行**的（顶层无 `if __name__` 保护），不要 `import` 它们。
@@ -107,7 +109,8 @@ python q2_diag.py > q2_口径诊断.txt    # 储能执行口径对比诊断
 ## 待办
 
 - [ ] **让队友把 `Q2.py` 改名**（如 `q2_scipy.py`），否则会反复覆盖 `q2.py`
-- [ ] **尽快 `git commit`**：目录被整体回滚过一次，当前所有改动仍未提交
+- [x] ~~**尽快 `git commit`**~~ → 已提交（`519668e` 全部成果 + `4f422bc` 清理索引冲突），工作区干净
+- [x] ~~索引里的 `Q2.py` 大小写冲突~~ → 已用 `git update-index --force-remove Q2.py` 清除
 - [x] ~~问题二安全裕量精细寻优~~ → 已换成**报童分位裕量**（`HEDGE_MODE="quantile"`, `HEDGE_PARAM=0.75`），
       全年 1,398.3 万元，比固定 300 kW 省 13.9 万元；依据见 `q2_敏感性分析.txt`
 - [ ] 决定 `q1.py` 与 `storage.py` 是否只保留一份（两者结果相同）
