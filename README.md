@@ -33,6 +33,7 @@ python q2_diag.py > q2_口径诊断.txt    # 储能执行口径对比诊断
 | `q2_multiday.py` | 逐日 LP vs 多日联合 LP | `q2_多日LP对比.txt` |
 | `q2_rt.py` | 储能执行口径对比（按计划 / 实时再调度） | `q2_实时再调度对比.txt` |
 | `q2_peer.py` | 与队友方案的 2×2 对标 | `q2_对标队友.txt` |
+| `q2_periodicity.py` | **负载周周期性分析**（支撑 lag=7 预测） | `figures/q2/fig_负载周周期性.png`、`q2_负载周周期性.txt` |
 | `q2_diag.py` | 逐槽被动平衡 vs 完全信息最优 诊断 | `q2_口径诊断.txt` |
 | **`q3.py`** | **问题三主程序**（0:00 / 6:00 / 12:00 / 18:00 四阶段滚动调整） | `result3.xlsx`、`q3_结果汇总.txt` |
 | `q3.py ablate` | 各时刻预报的边际价值分析 | `q3_预报时刻边际价值.txt` |
