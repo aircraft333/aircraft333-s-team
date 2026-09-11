@@ -8,7 +8,7 @@
 \usepackage{svg}
 \usepackage{listings}
 
-\title{我的论文标题}
+\title{基于线性规划对微网与外网电力调控策略的研究}
 \tihao{C}
 \baominghao{121}
 \schoolname{上海交通大学}
@@ -16,8 +16,8 @@
 \memberb{刘允禾}
 \memberc{高慧鑫}
 \supervisor{高晓沨}
-\yearinput{2026}     % 年
-\monthinput{09}      % 月
+\yearinput{2026}     
+\monthinput{09}     
 \dayinput{13}
 
 \begin{document}
@@ -26,50 +26,65 @@
 
 \begin{abstract}
     随着“双碳”目标的推进和微网系统的快速发展，微网系统的经济调度成为促进新能源就地消纳、降低用能成本的关键。为此，本文在分时电价机制下，基于给定的电价、小区负载、光伏发电预测等数据，建立数学模型，协调外部电网购电和储能设备充放电，以实现经济效益最大化。\newline \hspace*{2em}
-    针对问题一，本文首先对电价、小区负载、光伏发电预测等数据进行了可视化分析，为进一步建模提供支撑。在所有变量完全已知的情况下，确认这是一个确定性优化问题，结合6个约束条件，建立以\textbf{全天费用最小}为目标函数的\textbf{线性规划（LP）模型}。求解得到全天各时段的计划购电量与储能充放电调度方案。得到全天总购电量为\textbf{59482.6990 kWh},全天总购电费为\textbf{35126.9486 元}。\newline \hspace*{2em} 
+    针对问题一，本文首先对电价、小区负载、光伏发电预测等数据进行了可视化分析，为进一步建模提供支撑。在所有变量完全已知的情况下，确认这是一个确定性优化问题，结合6个约束条件，建立以\textbf{全天费用最小}为目标函数的\textbf{线性规划（LP）模型}。求解得到全天各时段的计划购电量与储能充放电调度方案。得到全天总购电量为\textbf{59482.6990 kWh},全天总购电费为\textbf{35126.9486 元}。\newline \hspace*{2em} 针对问题二，本文首先通过读取附件2的全年负载绘制每周同一天的小区负载曲线叠加图和ACF图，发现小区负载具有周期性；接着，通过“前三天滑动平均”预测光伏发电。建立\textbf{二阶段线性规划模型}：第一阶段根据小区负载和光伏发电功率预测值，引入\textbf{报童模型}计算出紧急购电量，求出初步的购电策略；第二阶段模拟实际运行,触发紧急购电惩罚，采用\textbf{逐槽法}得到全年购电策略，并计算出全年购电费用13,949,108.5 元,全年购电量为21584237.4kWh.
           
-            \keywords{关键词1\quad  关键词2\quad   关键词3}
+            \keywords{线性规划\quad  报童模型\quad   关键词3}
         \end{abstract}
         \section{问题重述}
         \subsection{问题背景}
        随着“碳达峰、碳中和”目标的推进，以光伏为代表的分布式能源正经历跨越式发展。微网能解决大规模并网带来的反向潮流、电压波动等问题，成为新型电力系统的发展趋势。而外网普遍实行峰谷分时电价机制，电价在不同时段存在显著差异。为了满足小区的负载且节省微网的购电费用，建立数学模型制定合理的购电策略和储能设备的充放电量尤为重要。
         \subsection{问题重述}
-        \quad\textbf{问题一:}
+        \noindent\textbf{问题一:}
         \begin{itemize}
             \item 假设每天电价与小区负载固定。
             \item 要求微网提供的电能不可低于小区负载，且储能设备在 0:00 和 24:00 的储电量相同。
             \item 根据光伏发电功率一天的预测数据，给出每天 0:00 制定微网当天的计划购电策略的数学模型。
         \end{itemize}
         
-        \quad\textbf{问题二:}
+        \noindent\textbf{问题二:}
         \begin{itemize}
         \item 假设每天电价恒定，但小区负载与光伏发电功率随时间波动。
         \item 要求若计划供电量低于实际负载需以5倍实时电价紧急购电；常规时段购电仍按计划购电量计费。
         \item 给出每天
 0:00 制定微网当天的计划购电策略。
 \end{itemize}
-        \quad\textbf{问题三:}
+        \noindent\textbf{问题三:}
         \begin{itemize}
         \item 假设每天0:00、6:00、12:00 和 18:00 可获得未来 24 小时整点的光伏发电功率预报，允许每天滚动调整购电策略。
         \item 要求：计划购电量高于调整购电量的部分，违约电价是交易时刻电价的 50\%；调整购电量高于计划购电量的部分，超出部分的电价按交易时刻电价的 1.5 倍支付。总的购电费用包括计划购电费用、紧急购电费用和调整购电量的相关费用。
         \item 建立微网当天购电策略的数学模型
         \end{itemize}
-        
-        \quad\textbf{问题四:}
+        \noindent\textbf{问题四:}
         针对外网电价实时波动，建立微网当天购电策略的数学模型。
-       
-        \section{问题分析}
+       \section{问题分析}
         \subsection{问题一的分析}
         问题一要求在每天 0:00 制定微网当天的计划购电策略的数学模型。具体条件为每天电价与小区负载固定，满足微网提供的电能不可低于小区负载，且储能设备在 0:00 和 24:00 的储电量相同的需求。由于所有输入数据均为已知常量，故该问题为一个确定性优化问题。可以通过数学方法算出最小值，且所有约束条件均可转化为线性等式或不等式，故选择线性规划(LP)模型。求解时，通过Python的PuLP库构建模型，调用CBC求解器，求出全局最优解。
-    \begin{figure}[!h]
+    \subsection{问题二的分析}
+        问题二在问题一的基础上要求在每天 0:00 制定微网当天的计划购电策略的数学模型。小区负载和光伏发电功率随时间波动，且要承受紧急购电惩罚。本题重点在预测存在偏差的情况下有效规避紧急购电惩罚，同时实现全天购电费用最小化。故引入报童模型找到多购电成本与少购电损失的平衡点，再通过线性规划获得初步策略，最后通过逐槽法模拟实时运行，得到完整策略。
+        \begin{figure}
     \centering
-    \includegraphics[width=0.7\textwidth]{问题1思维框架.png}
-    \caption{问题1思维框架}
-    \label{fig:circuit-diagram}
-    \end{figure}
-        \subsection{问题二的分析}
-        问题二要求在每天 0:00 制定微网当天的计划购电策略的数学模型。具体条件为每天电价固定，
+    \begin{minipage}[c]{0.44\textwidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{第一问思维框架.png}
+        \subcaption{问题一思维框架}
+        \label{fig:sample-figure-a}
+    \end{minipage} \hfill
+    \begin{minipage}[c]{0.48\textwidth}
+        \centering
+        \includegraphics[width=1\textwidth]{\detokenize{第二问思维导图.png}}
+        \subcaption{问题二思维框架}
+        \label{fig:sample-figure-b}
+    \end{minipage}
+    \label{fig:sample-figure}
+\end{figure}
         \subsection{问题三的分析}
+        问题三中微网每天0:00、6:00、12:00和18:00均可获取最新的未来24小时光伏预报，同时题目引入双向惩罚机制：若计划购电量高于调整购电量，违约电价是交易时刻电价的 50\%；若调整购电量高于计划购电量，超出部分承担1.5倍的电价惩罚。为了寻找最优平衡，本文选择构建多阶段滚动调整线性优化模型。
+         \begin{figure}[!h]
+    \centering
+    \includegraphics[width=.6\textwidth]{问题三思维导图.png}
+    \caption{问题三思维框架}
+    \label{fig:circuit-diagram}
+\end{figure}
         \subsection{问题四的分析}
         \section{模型假设}
        1.假设每日电价完全相同，微网不会影响电价。\newline
@@ -81,32 +96,36 @@
             \begin{tabular}{cc}
                 \hline
                 \makebox[0.3\textwidth][c]{符号} & \makebox[0.4\textwidth][c]{意义} \\ \hline
-                $c_t$ & 第t时段的外网电价 \\ \hline
+                $pi_t$ & 第t时段的外网电价 \\ \hline
                 $L_t$ & 第t时段的小区负载功率 \\ \hline
                 $P_{pv,t}$ & 第t时段的光伏预测功率 \\ \hline
                 $P_{max}=5000\text{kW}$ & 储能最大充放电功率 \\ \hline
                 $E_{min}=1200\text{kWh},\ E_{max}=10800\text{kWh}$ & 储能安全区间 \\ \hline
-                $E_0=\mathsf{E}_T=6000\text{kWh}$ & 储能始末电量 \\ \hline
+                $E_0=E_T=6000\text{kWh}$ & 储能始末电量 \\ \hline
                 $\eta_{ch}=0.9$ & 充电效率 \\ \hline
                 $\eta_{dis}=0.9$ & 放电效率 \\ \hline
-                $P_{buy,t}\ge 0$ & 微网向外网购电功率 \\ \hline 
-                $P_{ch,t}\ge 0$ & 储能充电功率 \\ \hline
-                $P_{dis,t}\ge 0$ & 储能放电功率\\ \hline 
-                $P_{curt,t}\ge 0$ & 弃光功率\\ \hline 
+                $b_t\ge 0$ & 微网向外网购电功率 \\ \hline 
+                $c_t\ge 0$ & 储能充电功率 \\ \hline
+                $d_t\ge 0$ & 储能放电功率\\ \hline 
+                $S_t\ge 0$ & 弃光功率\\ \hline 
                 $u_t\in \{0,1\}$ & 充放电状态互斥0-1变量 \\ \hline
                 $E_t$ &第t时段结束时储能的存储电量\\ \hline
-
+                $L^{real}_{d,t}$ & 历史实际负荷\\ \hline
+                $G^{real}_{d,t}$ & 历史实际光伏功率 \\ \hline
+                $\hat{L_{d,t}}$ & 日前预测负荷\\ \hline
+                $\hat{G_{d,t}}$ & 日前预测光伏功率\\ \hline
+                $\varepsilon_{d,t}$ &历史净负荷预测误差\\ \hline
+                $X_{d,t}$ & 日前安全裕量 \\ \hline
+            
             \end{tabular}
         \end{center}
-        
-   
-    \section{问题一模型的建立与求解}
+        \section{问题一模型的建立与求解}
     \subsection{模型建立}
     问题1在每天电价和小区负载相同且已知全天光伏发电功率预测数据的理想条件下，制定微网当天的计划购电策略，由于所有输入数据均为已知常量，故该问题为一个确定性优化问题，选择线性规划(LP)模型。
     \subsection{数据预处理}
     本小节主要详细介绍对数据的预处理。首先对光伏、负载、电价的日内变化进行可视化处理，直观展示了三者时间错位的特征；其次，分析光伏、负载、电价的相关性，发现光伏预测与净负荷呈极强负相关，证明将负载和光伏合并为净负荷的合理性。这些数据的处理为后续模型的建立提供了有力的支撑。
     \subsubsection{光伏、负载、电价可视化分析}
-     绘制图2展示光伏、负载、电价的时序分布发现电价呈现典型的峰谷分时特征，峰谷价差显著，为储能套利提供了经济空间；小区负载具有早晚双峰的特征，且在傍晚高峰时段与电价峰段重合，导致购电成本巨大；光伏供电功率具有明显的间歇性，仅在日间（约6:00-18:00）发电，峰值出现在正午，与电价晚高峰存在明显时间错位，必须引入储能设备作为缓冲。
+     绘制图\ref{fig:circuit-diagram}展示光伏、负载、电价的时序分布发现电价呈现典型的峰谷分时特征，峰谷价差显著，为储能套利提供了经济空间；小区负载具有早晚双峰的特征，且在傍晚高峰时段与电价峰段重合，导致购电成本巨大；光伏供电功率具有明显的间歇性，仅在日间（约6:00-18:00）发电，峰值出现在正午，与电价晚高峰存在明显时间错位，必须引入储能设备作为缓冲。
     \begin{figure}[!h]
     \centering
     \includegraphics[width=0.6\textwidth]{逐小时.png}
@@ -121,11 +140,10 @@
     \caption{相关性热力图}
     \label{fig:circuit-diagram}
 \end{figure}
-
- \begin{figure}[!h]
+\begin{figure}[!h]
     \centering
     \includegraphics[width=0.6\textwidth]{套利门槛.png}
-    \caption{电价/小区负载/光伏发电预测功率日内变化}
+    \caption{电价持续时长曲线}
     \label{fig:circuit-diagram}
 \end{figure}
     \subsection{约束条件}
@@ -158,32 +176,27 @@
         P_{buy,t}\ge 0,\qquad P_{curt,t}\ge 0,\qquad t=1,2,\ldots,T.
         \]
         \end{enumerate}
-    
     \subsection{模型求解}
-     考虑到经济效益，为使全天购电总费用最小，目标函数为：
+     考虑到经济效益，为使全天购电总费用（Z）最小，目标函数为：
      \begin{equation}
      min \mathbf{Z} =\sum_{t= 1}^{T} c_t\cdot (P_{buy,t}\cdot \Delta t) 
      \end{equation}
-
-     将所需变量代入线性规划模型（见附录）中，在约束条件下使得目标函数的值最小，得到当天购电策略如表1、表2。
-
-    \begin{table}[h]
+将所需变量代入线性规划模型（见附录）中，在约束条件下使得目标函数的值最小，得到当天购电策略如表1、表2。
+\begin{table}[h]
     \centering
     \caption{\textbf{微网在指定时间段的购电量及全天的购电量和购电费}}
-
-    \label{tab:storage_energy}
-
-    \begin{tabular}{|c|c|c|c|c|c|}
-    \hline
+\label{tab:storage_energy}
+\begin{tabular}{|c|c|c|c|c|c|c|c|}
+    \noalign{\hrule}
     时间段 & 购电量 & 时间段 & 购电量 & 时间段 & 购电量 \\
-    \hline
+    \noalign{\hrule}
     10:00-10:10 & 0.0000 & 12:00-12:10 &480.4125  & 14:00-14:10& 0.0000 \\
-    \hline
+    \noalign{\hrule}
     16:00-16:10 & 445.4136 & 18:00-18:10 & 531.8940 & 20:00-20:10 & 0.0000\\
-    \hline
+    \noalign{\hrule}
     
     \multicolumn{2}{|c|}{全天购电量} & 59482.6990  & \multicolumn{2}{|c|}{全天购电费} &  35126.9486\\
-    \hline
+    \noalign{\hrule}
     \end{tabular}
 
     \end{table}
@@ -193,41 +206,319 @@
     \caption{\textbf{储能设备在指定时间段的充放电量及0:00与24:00的储电量}}
 
     \label{tab:storage_energy}
-
-    \begin{tabular}{|c|c|c|c|c|c|}
-    \hline
+\begin{tabular}{|c|c|c|c|c|c|}
+    \noalign{\hrule}
     时间段 & 充电量 & 放电量 & 时间段 & 充电量 & 放电量 \\
-    \hline
+    \noalign{\hrule}
     0:00-4:00 & 4500.0000 & 0.0000 & 4:00-8:00 & 833.3333& 6365.8412 \\
-    \hline
+    \noalign{\hrule}
     8:00-12:00 & 4787.9643 & 1702.9970 & 12:00-16:00 & 5286.0352 & 91.1014 \\
-    \hline
+    \noalign{\hrule}
     16:00-20:00 & 0.0000 & 5780.1319 & 20:00-24:00 & 5333.3333 & 2859.8681 \\
-    \hline
+    \noalign{\hrule}
     \multicolumn{2}{|c|}{0:00储电量} & 6000.0000 & \multicolumn{2}{|c|}{24:00储电量} & 6000.0000\\
-    \hline
+    \noalign{\hrule}
     \end{tabular}
-
-    \end{table}
+\end{table}
         \section{问题二模型的建立与求解} 
         \subsection{模型建立}
-        问题二的电价每日恒定，但小区负载和光伏发电功率具有随机波动性。且若实际供电量低于小区负载需求，需承担高达5倍实时电价的紧急购电惩罚。因此这属于不确定性优化问题。\newline \hspace*{2em}为规避巨额惩罚风险
-        \begin{figure}[!h]
+        问题二的电价每日恒定，但小区负载和光伏发电功率具有随机波动性。且若实际供电量低于小区负载需求，需承担高达5倍实时电价的紧急购电惩罚。因此这属于不确定性优化问题。为规避巨额惩罚风险，本节引入两阶段线性规划模型并结合报童型安全裕量，构建兼顾经济性与可靠性的购电策略优化模型。
+        \subsubsection{不确定性因素的定义与预测}
+        在微网的运行过程中，小区负载和光伏发电功率的波动是导致紧急购电的主要原因。本节先对这两个不确定性因素进行定义与量化预测：\newline
+        \hspace*{2em} \textbf{（1）小区负载预测:}
+        \begin{figure}
     \centering
-    \includegraphics[width=0.6\textwidth]{第二问思维导图.png}
-    \caption{问题二思维框架}
+    \begin{minipage}[c]{0.48\textwidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{一周周期性1.jpg}
+        \subcaption{全年一周负载曲线叠加}
+        \label{fig:sample-figure-a}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[c]{0.48\textwidth}
+        \centering
+        \includegraphics[width=0.95\textwidth]{一周周期性2.jpg}
+        \subcaption{曲线自相关系数}
+        \label{fig:sample-figure-b}
+    \end{minipage}
+    \caption{小区负载周期性验证}
+    \label{fig:sample-figure}
+\end{figure} 将全年周一和周五的负载均值曲线进行叠加绘制如图6（a），发现历史波动数据极小，为采用“上周同一天”进行预测提供支撑。绘制负载ACF检验图如图6（b），可以发现负载时间序列在滞后7天、14天、21天处的自相关系数呈现尖峰，其余滞后天数相关系数极低甚至为负，说明负载具有极强的周季节性。\newline \hspace*{2em}考虑到居民用电习惯在一周内具有周期性，本文采用“上周同一天”的实际负载数据作为预测值。
+        设第 \(d\) 天、第 \(t\) 个时段（\(t=1,\ldots,144\)）的负荷为 \(L_{d,t}\)，则日前预测值为 \(\hat{L}_{d,t}\)为：\newline
+\begin{equation}
+\hat{L}_{d,t} = 
+\begin{cases}
+L_{d-7,t}^{\text{real}}, & d \ge 7 \\
+L_{\text{att1},t}, & d < 7 \quad (\text{前7天无历史周数据时，用附件1基准日代替})
+\end{cases}
+\end{equation}
+
+        \par\textbf{（2）光伏发电功率预测：} 由于光伏发电受到天气因素影响，随时间波动，本文采用“前3天滑动平均”方法，计算得到光伏预测发电功率。设第 $d$ 天第 $t$ 时段的实际光伏为 $G_{d,t}^{\text{real}}$，滑动窗口 $k=3$：
+\begin{equation}
+\hat{G}_{d,t} =
+\begin{cases}
+\dfrac{1}{\min(d,3)}\sum_{j=1}^{\min(d,3)} G_{d-j,t}^{\text{real}}, & d \ge 1,\\[4pt]
+G_{\text{att1},t}, & d = 0.
+\end{cases}
+\end{equation}
+\subsubsection{报童模型}
+设第 $d$ 天第 $t$ 时段的预测净负荷为
+\[
+Net_{d,t}^{\mathrm{pred}} = \hat{L}_{d,t} - \hat{G}_{d,t},
+\]
+其中 $\hat{L}_{d,t}$ 和 $\hat{G}_{d,t}$ 分别为负荷与光伏发电功率的预测值。由于预测不可避免地存在误差，若计划购电量等于 $Net_{d,t}^{\mathrm{pred}}$，则在实际净负荷大于预测值时会产生少购电惩罚；而少购电的惩罚远大于多购电的成本，因此引入报童模型来设置安全裕量。\newline\hspace*{2em} 设超额边际（多购电）成本为 $c_o$，欠额边际（少购电）损失为 $c_u$：
+\begin{itemize}
+    \item $c_o = \pi_t$
+    \item $c_u = 5\pi_t - \pi_t = 4\pi_t$
+\end{itemize}
+
+根据运筹学经典\textbf{报童临界分位数公式}，最优购电量临界分位数 $\alpha^*$ 满足：
+\begin{equation}
+\alpha^* = \frac{c_u}{c_u + c_o} = \frac{4\pi_t}{4\pi_t + \pi_t} = \frac{4}{5} = 0.80 \ (80\%)
+\end{equation}
+即计划购电量覆盖历史预测误差的 80\% 分位数作为当天该时段的安全裕量，此时期望总成本最低\cite{ref1}。
+历史同一时段的预测误差样本集合为：
+\begin{equation}
+\varepsilon_{j,t} = (L_{j,t}^{\text{real}} - G_{j,t}^{\text{real}}) - (\hat{L}_{j,t} - \hat{G}_{j,t})
+\end{equation}
+取过去窗口期 $W$ 天的数据（保证边界大于等于 0），从过去 $W$ 天误差样本中找到第 80 百分位数，赋给 $X_{d,t}$：
+\begin{equation}
+X_{d,t} = \mathrm{Quantile}_{\alpha^*}\left(\left\{\varepsilon_{j,t}\mid \max(0,d-W)\le j<d\right\}\right).
+\end{equation}
+得到最终等效预测负荷为\begin{equation}
+\tilde{L}_{d,t} = \hat{L}_{d,t} + X_{d,t}
+\end{equation}
+\subsubsection{两阶段优化模型}
+本模型分为两个阶段：第一阶段
+日前0:00单日线性规划；
+第二阶段模拟实际运行，触发紧急购电惩罚。
+\subsubsection{决策变量的确定}
+本节设定以下五个决策变量：
+\begin{enumerate}
+    \item \textbf{$b_t \geqslant 0$},其中 $b_t$是第t时段计划购电功率
+    \item \textbf{$c_t\geqslant 0$},$c_t$是第t时段计划储能充电功率
+    \item \textbf{$d_t \geqslant 0$},其中 $d_t$是第t时段计划购储能放电功率
+    \item  若中午光伏供电功率大且储能电池已充满，多余的电能无处消纳，会导致功率平衡方程无解，故引入弃光功率 \newline
+    \hspace*{2em} \textbf{$s_t \geqslant 0$},其中 $s_t$是第t时段计划弃光功率
+    \item \textbf{$E_t$}：$E_t$ 是第 $t$ 时段末储能状态电量 \newline  \hspace*{2em}由于储能充放电存在效率损耗（$\eta=0.95<1$），同时充放电（$c_t>0,d_t>0$）会导致 $\eta^2=0.9025$ 的净能量损耗，在线性规划求解极小值时，最优解天然满足互斥条件 $c_t\cdot d_t=0$，因此可以直接使用连续变量 LP 求解，提升了计算速度。
+\end{enumerate}
+        \subsection{约束条件}
+        本模型需满足以下约束条件：
+        \begin{enumerate}
+    \item \textbf{日前功率平衡约束：}题目要求任何时刻微网提供的总电能不会低于小区负载，
+    \begin{equation}
+        b_t + \hat{G}_{d,t} + d_t - c_t - s_t \geqq  \tilde{L}_{d,t}, \quad \forall t = 1, \dots, 144
+    \end{equation}
+\item \textbf{储能动态容量演化与初值约束：}
+    \begin{equation}
+        E_t = E_{t-1} + \left( \eta \cdot c_t - \frac{d_t}{\eta} \right) \cdot \Delta t, \quad \forall t = 1, \dots, 144 \quad (\text{其中 } E_0 = E_d^{\text{start}})
+    \end{equation}
+\item \textbf{储能运行上下限约束：}将充放电功率和储电量约束在合理的物理范围内，
+    \begin{align}
+        & 0 \le c_t \le P_{\text{rate}} \quad (5000\text{ kW}) \\
+        & 0 \le d_t \le P_{\text{rate}} \quad (5000\text{ kW}) \\
+        & E_{\min} \le E_t \le E_{\max} \quad (1200\text{ kWh} \le E_t \le 10800\text{ kWh})
+    \end{align}
+\item \textbf{非负性：} 不考虑微网向外网售电，\newline  \hspace*{2em}$b_t \ge 0, s_t \ge 0$。
+\end{enumerate}
+    \subsection{模型求解}
+    \textbf{(a) 第一阶段线性规划求解} \newline  \hspace*{2em}
+为提高经济效益，目标函数确定为最小化单日计划购电费用：
+\[
+\min \sum_{t=1}^{144} \pi_t \cdot b_t \cdot \Delta t
+\] 其中，$\pi_t$ 为 $t$ 时段的电价，$\Delta t=10\,\text{min}$。\\
+\hspace*{2em}
+引入报童模型，通过CBC求解器求解，得到当日初步的购电计划和全天最小的计划购电费用（见附录）。\newline  \hspace*{2em}
+\textbf{(b) 第二阶段紧急购电与实际执行} \newline  \hspace*{2em}
+进入时段t,实际负荷与实际光伏发电功率出现波动，会与预测值产生实时净偏差：
+\[
+\Delta P_t = L_t^{\text{real}} - G_t^{\text{real}} - b_t
+\]
+由于只能观测当前偏差$P_t$，采用逐槽法做出当前最优动作： 
+（1）若 $\Delta P_t>0$，存在电力缺口。
+先利用先前储能进行放电，放电过程受到放电最大功率 $P_{\max}$ 和当前剩余可用电量 $(E_{t-1}-E_{\min})$ 的双约束：
+\[
+d_t = \min \left( \Delta P_t,\, P_{\max},\, \frac{(E_{t-1} - E_{\min}) \cdot \eta}{\Delta t} \right)
+\]
+如果储存电量不足以弥补电力缺口，则触发紧急购电：
+\[
+e_t = \Delta P_t - d_t
+\]
+（2）	若deltaP<0,电力过剩
+将富余的电能冲进储能电池储存起来，留给以后缺电的时候用。
+所冲电功率：
+\[
+c_t = \min \left( -\Delta P_t,\, P_{\max},\, \frac{(E_{\max} - E_{t-1})}{\eta \cdot \Delta t} \right)
+\]
+如果以及超过电池储能上限，则进行无损耗弃电。弃电功率：
+\[
+s_t = -\Delta P_t - c_t
+\]
+逐槽状态变化：
+\[
+E_t = E_{t-1} + \left( \eta c_t - \frac{d_t}{\eta} \right) \Delta t
+\]
+更新后的 $E_t$ 作为下一个时段 $t+1$ 的初始状态，依次推进至 $t=143=24\times60/10-1$。得到考虑紧急购电的完整购电策略，并得到全年购电费用13,949,108.5 元（计划 21,442,248.8 kWh / 1,315.5 万 + 紧急 141,988.6 kWh / 79.4 万；其中紧急天数共 141/334天。
+\subsection{参数修正}
+在第一阶段引入报童模型计算临界分位数时，根据经典报童临界分位数公式计算得到 $\alpha^*$ 的值为 $80\%$。然而在调整参数时，发现窗口取30天和取60天时，分位数取0.76效果最好；而报童解析值取 0.8 与取最优值 0.76 时求得最终购电费用只差 0.12\%，窗口 取30天 与取 60天 只差 0.22\%，说明模型具有稳健性。
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=.8\textwidth]{\detokenize{调整参数1.png}}
+    \caption{参数调整}
     \label{fig:circuit-diagram}
 \end{figure}
-        \subsection{约束条件} 
-        \subsection{模型求解}
-        \section{问题三模型的建立与求解} 
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=.8\textwidth]{\detokenize{调整参数2.png}}
+    \caption{参数调整}
+    \label{fig:circuit-diagram}
+\end{figure} \newline
+微网在指定日期的紧急购结果如下表。
+\begin{table}[htbp]
+\centering
+\caption{微网在指定时间段的购电量及全天的购电量和购电费（2025-03-20）}
+\label{tab:grid_20250320}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+时间段 & 购电量 (kWh) & 时间段 & 购电量 (kWh) & 时间段 & 购电量 (kWh) \\ \hline
+10:00--10:10 & 0.00   & 12:00--12:10 & 474.56 & 14:00--14:10 & 0.00 \\ \hline
+16:00--16:10 & 457.92 & 18:00--18:10 & 697.40 & 20:00--20:10 & 0.00 \\ \hline
+\multicolumn{2}{|c|}{全天购电量} & \multicolumn{2}{c|}{64,054.36 kWh} & \multicolumn{1}{c|}{全天购电费} & 38,846.55 元 \\ \hline
+\end{tabular}
+\end{table}
+\begin{table}[htbp]
+\centering
+\caption{储能设备在指定时间段的充放电量及 0:00 和 24:00 的储电量（2025-03-20）}
+\label{tab:ess_20250320}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+时间段 & 充电量 (kWh) & 放电量 (kWh) & 时间段 & 充电量 (kWh) & 放电量 (kWh) \\ \hline
+0:00--4:00   & 8547.19 & 174.92  & 4:00--8:00   & 1863.69 & 5951.95 \\ \hline
+8:00--12:00  & 4959.44 & 2593.58 & 12:00--16:00 & 4382.61 & 615.38  \\ \hline
+16:00--20:00 & 142.05  & 5947.02 & 20:00--24:00 & 307.05  & 1224.86 \\ \hline
+\multicolumn{2}{|c|}{0:00 储电量} & 1,519.60 kWh & \multicolumn{2}{c|}{24:00 储电量} & 1,359.53 kWh \\ \hline
+\end{tabular}
+\end{table}
+\begin{table}[htbp]
+\centering
+\caption{微网在指定时间段的购电量及全天的购电量和购电费（2025-06-21）}
+\label{tab:grid_20250621}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+时间段 & 购电量 (kWh) & 时间段 & 购电量 (kWh) & 时间段 & 购电量 (kWh) \\ \hline
+10:00--10:10 & 0.00   & 12:00--12:10 & 0.00 & 14:00--14:10 & 0.00 \\ \hline
+16:00--16:10 & 175.47 & 18:00--18:10 & 0.00 & 20:00--20:10 & 0.00 \\ \hline
+\multicolumn{2}{|c|}{全天购电量} & \multicolumn{2}{c|}{33,726.25 kWh} & \multicolumn{1}{c|}{全天购电费} & 19,222.40 元 \\ \hline
+\end{tabular}
+\end{table}
+
+% ==================== 2025-06-21 表 2 ====================
+\begin{table}[htbp]
+\centering
+\caption{储能设备在指定时间段的充放电量及 0:00 和 24:00 的储电量（2025-06-21）}
+\label{tab:ess_20250621}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+时间段 & 充电量 (kWh) & 放电量 (kWh) & 时间段 & 充电量 (kWh) & 放电量 (kWh) \\ \hline
+0:00--4:00   & 1453.98  & 306.38  & 4:00--8:00   & 1218.50 & 1699.37 \\ \hline
+8:00--12:00  & 10322.21 & 0.00    & 12:00--16:00 & 0.00    & 0.00    \\ \hline
+16:00--20:00 & 72.68    & 5857.10 & 20:00--24:00 & 611.13  & 2636.48 \\ \hline
+\multicolumn{2}{|c|}{0:00 储电量} & 1,333.39 kWh & \multicolumn{2}{c|}{24:00 储电量} & 1,978.12 kWh \\ \hline
+\end{tabular}
+\end{table}
+% ==================== 2025-09-23 表 1 ====================
+\begin{table}[htbp]
+\centering
+\caption{微网在指定时间段的购电量及全天的购电量和购电费（2025-09-23）}
+\label{tab:grid_20250923}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+时间段 & 购电量 (kWh) & 时间段 & 购电量 (kWh) & 时间段 & 购电量 (kWh) \\ \hline
+10:00--10:10 & 0.00   & 12:00--12:10 & 404.92 & 14:00--14:10 & 0.00 \\ \hline
+16:00--16:10 & 528.90 & 18:00--18:10 & 764.17 & 20:00--20:10 & 0.00 \\ \hline
+\multicolumn{2}{|c|}{全天购电量} & \multicolumn{2}{c|}{64,899.02 kWh} & \multicolumn{1}{c|}{全天购电费} & 40,302.64 元 \\ \hline
+\end{tabular}
+\end{table}
+
+% ==================== 2025-09-23 表 2 ====================
+\begin{table}[htbp]
+\centering
+\caption{储能设备在指定时间段的充放电量及 0:00 和 24:00 的储电量（2025-09-23）}
+\label{tab:ess_20250923}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+时间段 & 充电量 (kWh) & 放电量 (kWh) & 时间段 & 充电量 (kWh) & 放电量 (kWh) \\ \hline
+0:00--4:00   & 9075.84 & 48.65   & 4:00--8:00   & 1690.68 & 7009.90 \\ \hline
+8:00--12:00  & 4042.58 & 1707.69 & 12:00--16:00 & 5529.32 & 793.14  \\ \hline
+16:00--20:00 & 95.90   & 5941.24 & 20:00--24:00 & 507.47  & 1153.78 \\ \hline
+\multicolumn{2}{|c|}{0:00 储电量} & 1,246.64 kWh & \multicolumn{2}{c|}{24:00 储电量} & 1,589.36 kWh \\ \hline
+\end{tabular}
+\end{table}
+% ==================== 2025-12-21 表 1 ====================
+\begin{table}[htbp]
+\centering
+\caption{微网在指定时间段的购电量及全天的购电量和购电费（2025-12-21）}
+\label{tab:grid_20251221}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+时间段 & 购电量 (kWh) & 时间段 & 购电量 (kWh) & 时间段 & 购电量 (kWh) \\ \hline
+10:00--10:10 & 0.00   & 12:00--12:10 & 876.91 & 14:00--14:10 & 0.00 \\ \hline
+16:00--16:10 & 792.60 & 18:00--18:10 & 720.82 & 20:00--20:10 & 0.00 \\ \hline
+\multicolumn{2}{|c|}{全天购电量} & \multicolumn{2}{c|}{93,091.81 kWh} & \multicolumn{1}{c|}{全天购电费} & 59,567.95 元 \\ \hline
+\end{tabular}
+\end{table}
+
+% ==================== 2025-12-21 表 2 ====================
+\begin{table}[htbp]
+\centering
+\caption{储能设备在指定时间段的充放电量及 0:00 和 24:00 的储电量（2025-12-21）}
+\label{tab:ess_20251221}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+时间段 & 充电量 (kWh) & 放电量 (kWh) & 时间段 & 充电量 (kWh) & 放电量 (kWh) \\ \hline
+0:00--4:00   & 8978.81 & 340.93  & 4:00--8:00   & 2658.45 & 1729.66 \\ \hline
+8:00--12:00  & 5046.84 & 7446.95 & 12:00--16:00 & 7805.46 & 2387.71 \\ \hline
+16:00--20:00 & 155.04  & 5941.14 & 20:00--24:00 & 256.01  & 2271.62 \\ \hline
+\multicolumn{2}{|c|}{0:00 储电量} & 1,269.63 kWh & \multicolumn{2}{c|}{24:00 储电量} & 1,326.83 kWh \\ \hline
+\end{tabular}
+\end{table}
+\section{问题三模型的建立与求解}
         \subsection{模型建立}
-        \subsection{约束条件} 
+        由于光伏发电功率预报在不断更新，且存在双向偏差惩罚，为了在二者之间寻找平衡，在第二问的基础上建立多阶段滚动调整线性优化模型，整体分为三个阶段。
+       \subsubsection{不确定性因素的定义与预测}
+        问题三与问题二最大的不同在于光伏发电功率能不断更新，而小区负载和光伏发电功率仍随时间波动，因此小区负载预测和光伏发电功率预测同第二问。
+        \subsubsection{报童模型}
+与第二问不同，第三问只要改变计划量就会产生惩罚，是典型的非对称不确定性损失。少买电的惩罚（$5\pi_t$）远大于多买电的成本（$\pi_t$），设超额边际成本为 $c_o$，欠额边际损失为 $c_u$:\newline \hspace*{2em}\textbf{(a)计划阶段（0:00）：}多买 1 kWh 的成本是 $\pi_t$，少买 1 kWh 则要按 $5\pi_t$ 紧急购电：
+\begin{equation}
+c_{o} = \pi_{t},\qquad c_{u} = 5\pi_{t} - \pi_{t} = 4\pi_{t}
+\end{equation}
+\begin{equation}
+\alpha^{*} = \frac{c_u}{c_u + c_o} = \frac{4}{5} = 0.80
+\end{equation}
+\newline \hspace*{2em}\textbf{(b)调整阶段（6:00 / 12:00 / 18:00）：}调整电价规则改变了两侧的边际成本：超出计划的部分单价为 $1.5\pi_t$，少买的部分只退 $0.5\pi_t$。因此：
+\begin{equation}
+    c_o = 1.5\pi_t,\qquad c_u = 5\pi_t - 1.5\pi_t = 3.5\pi_t
+\end{equation}
+\begin{equation}
+    \alpha^{*} = \frac{c_u}{c_u + c_o} = \frac{3.5}{5} = 0.70
+\end{equation}
+两个阶段的临界分位比并不相同，而两阶段共用同一个裕量，故最优裕量应落在 $[0.70, 0.80]$ 区间内，取中点 $\alpha^*=0.75$。历史误差样本取的是“负载预报误差”。问题三的光伏已由附件3承担，故裕量只加在负载侧，不重复计入。
+\begin{equation}
+\varepsilon_{j,t} = L^{\mathrm{real}}_{j,t} - \hat{L}_{j,t}
+\end{equation}
+从过去 $W$ 天的误差样本中取 $\alpha^*$ 分位数，即为该时段的裕量 $X$（回看窗口 $W=60$ 天，且严格只用当日之前的数据）：
+\begin{equation}
+X_{d,t} = \mathrm{Quantile}_{\alpha^{*}}\!\left(\left\{\varepsilon_{j,t}\ \middle|\ \max(0,\,d-W) \le j < d\right\}\right)
+\end{equation}
+$X_{d,t}$ 即为裕量。最终等效预测负荷：
+\begin{equation}
+\tilde{L}_{d,t} = \hat{L}_{d,t} + X_{d,t}
+\end{equation}
+\subsubsection{}
+        \subsection{约束条件}
         \subsection{模型求解}
-        \begin{equation}\tag{8}
-            \sum_{j=16}^{\infty} x_{ijt} + \frac{\sum_{n=1}^{\infty} x_{ijt}}{2} \leq 1,\quad 27\leq i\leq 34
-        \end{equation}
-        \section{问题四模型的建立与求解} 
+        
+        \section{问题四模型的建立与求解}
         \subsection{模型建立}
         \subsection{约束条件} 
         \subsection{模型求解}
@@ -237,8 +528,7 @@
             \bibitem{bib:one} ....
         \end{thebibliography}
 
-        \begin{appendices}
+        \appendix
         \begin{lstlisting}[language=Python]
         \end{lstlisting}
-        \end{appendices}
 \end{document}
