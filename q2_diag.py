@@ -90,39 +90,50 @@ log(f"主口径自检：逐槽法应为 q2.py 主结果 13,949,108.5 元 → 实
     f"{a['cost_plan'] + a['cost_emg']:,.1f} 元，"
     f"差 {a['cost_plan'] + a['cost_emg'] - 13949108.5:+,.1f} 元")
 
-rule("主口径下两组结果的明细")
-for m, nm in MODES:
-    r = R[(HEDGES[1][0], m)]
-    log(f"\n【{nm}】（2025.2.1-12.31，{r['n_days']} 天）")
-    log(f"  计划购电量 {r['q_plan']:>14,.1f} kWh   计划购电费 {r['cost_plan']:>14,.1f} 元")
-    log(f"  紧急购电量 {r['q_emg']:>14,.1f} kWh   紧急购电费 {r['cost_emg']:>14,.1f} 元")
-    log(f"  总购电费 {r['cost_plan'] + r['cost_emg']:>16,.1f} 元")
-    log(f"  充电 {r['q_ch']:>12,.1f} kWh   放电 {r['q_dis']:>12,.1f} kWh"
-        f"（净 {r['q_ch'] - r['q_dis']:+,.1f}）")
-    if r["q_emg"] > 0:
-        log("  紧急购电量按电价档拆分：" + "  ".join(
-            f"{k} {r['tot_e'][tier == k].sum() / r['q_emg']:>6.1%}"
-            for k in (TIER_V, TIER_F, TIER_P)))
-        log("  紧急购电费按电价档拆分：" + "  ".join(
-            f"{k} {5 * pi[tier == k].dot(r['tot_e'][tier == k]) / r['cost_emg']:>6.1%}"
-            for k in (TIER_V, TIER_F, TIER_P)))
+# 两个裕量口径都要给明细：论文 §3.4 讨论「无前瞻的代价」时用的是 hedge=0
+# （以便把「储能时序」与「计划质量」分离），§3.3 的对照则用主口径，
+# 两张表都必须能在本报告里找到出处。
+rule("各裕量口径 × 各执行方式的明细")
+for hname, _X in HEDGES:
+    for m, nm in MODES:
+        r = R[(hname, m)]
+        log(f"\n【{hname} × {nm}】（2025.2.1-12.31，{r['n_days']} 天）")
+        log(f"  计划购电量 {r['q_plan']:>14,.1f} kWh   计划购电费 {r['cost_plan']:>14,.1f} 元")
+        log(f"  紧急购电量 {r['q_emg']:>14,.1f} kWh   紧急购电费 {r['cost_emg']:>14,.1f} 元")
+        log(f"  总购电费 {r['cost_plan'] + r['cost_emg']:>16,.1f} 元")
+        log(f"  充电 {r['q_ch']:>12,.1f} kWh   放电 {r['q_dis']:>12,.1f} kWh"
+            f"（净 {r['q_ch'] - r['q_dis']:+,.1f}）")
+        if r["q_emg"] > 0:
+            log("  紧急购电量按电价档拆分：" + "  ".join(
+                f"{k} {r['tot_e'][tier == k].sum() / r['q_emg']:>6.1%}"
+                for k in (TIER_V, TIER_F, TIER_P)))
+            log("  紧急购电费按电价档拆分：" + "  ".join(
+                f"{k} {5 * pi[tier == k].dot(r['tot_e'][tier == k]) / r['cost_emg']:>6.1%}"
+                for k in (TIER_V, TIER_F, TIER_P)))
 
-rule("差距（逐槽法 相对 每日完全信息最优）")
-log(f"  总购电费   {a['cost_plan'] + a['cost_emg'] - b['cost_plan'] - b['cost_emg']:>14,.1f} 元"
-    f"（{(a['cost_plan'] + a['cost_emg']) / (b['cost_plan'] + b['cost_emg']) - 1:+.3%}）")
-log(f"  紧急购电费 {a['cost_emg'] - b['cost_emg']:>14,.1f} 元")
-log(f"  紧急购电量 {a['q_emg'] - b['q_emg']:>14,.1f} kWh（负值 = 每日最优反而多买了电量）")
-log(f"  储能吞吐   充电 {a['q_ch'] - b['q_ch']:+,.1f} / 放电 {a['q_dis'] - b['q_dis']:+,.1f} kWh")
+for hname, _X in HEDGES:
+    a = R[(hname, "greedy")]
+    b = R[(hname, "best")]
+    log("")
+    log(f"—— 差距：{hname} 下，逐槽法 相对 每日完全信息最优 ——")
+    log(f"  总购电费   {a['cost_plan'] + a['cost_emg'] - b['cost_plan'] - b['cost_emg']:>14,.1f} 元"
+        f"（{(a['cost_plan'] + a['cost_emg']) / (b['cost_plan'] + b['cost_emg']) - 1:+.3%}）")
+    log(f"  紧急购电费 {a['cost_emg'] - b['cost_emg']:>14,.1f} 元")
+    log(f"  紧急购电量 {a['q_emg'] - b['q_emg']:>14,.1f} kWh（负值 = 每日最优反而多买了电量）")
+    log(f"  储能吞吐   充电 {a['q_ch'] - b['q_ch']:+,.1f} / 放电 {a['q_dis'] - b['q_dis']:+,.1f} kWh")
 
-log("")
-log("紧急购电量的逐小时分布（kWh，按小时汇总 6 个时段；主口径）")
-log("  小时    逐槽法      每日最优     单价(元/kWh)")
-for h in range(24):
-    x, y = a["tot_e"][6 * h:6 * h + 6].sum(), b["tot_e"][6 * h:6 * h + 6].sum()
-    if x + y > 1:
-        pr = 5 * pi[6 * h:6 * h + 6].mean()
-        bar = "#" * int(x / 8000)
-        log(f"  {h:2d}:00 {x:>10,.0f} {y:>12,.0f}      {pr:>5.2f}   {bar}")
+for hname, _X in HEDGES:
+    a = R[(hname, "greedy")]
+    b = R[(hname, "best")]
+    log("")
+    log(f"紧急购电量的逐小时分布（kWh，按小时汇总 6 个时段；{hname}）")
+    log("  小时    逐槽法      每日最优     单价(元/kWh)")
+    for h in range(24):
+        x, y = a["tot_e"][6 * h:6 * h + 6].sum(), b["tot_e"][6 * h:6 * h + 6].sum()
+        if x + y > 1:
+            pr = 5 * pi[6 * h:6 * h + 6].mean()
+            bar = "#" * int(x / 8000)
+            log(f"  {h:2d}:00 {x:>10,.0f} {y:>12,.0f}      {pr:>5.2f}   {bar}")
 
 write_report(resolve("q2_口径诊断.txt"))
 

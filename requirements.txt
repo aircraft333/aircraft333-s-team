@@ -1,0 +1,22 @@
+# 2026 高教社杯 C 题 · 运行依赖
+#
+# 安装：pip install -r requirements.txt
+# 环境：Python 3.13（开发与验证所用版本，3.10+ 一般也可）
+#
+# 说明：核心求解只需要前四项；matplotlib/scipy 用于绘图与统计；
+#       python-docx + Pillow 仅用于生成《问题X 模型与工作流.docx》；
+#       pypdf 仅用于阅读题目 PDF。
+
+pulp==3.3.2            # 线性规划建模（调用 CBC 求解器）
+numpy==2.4.1           # 数组运算
+pandas==3.0.0          # 读 Excel / 时间序列
+openpyxl==3.1.5        # xlsx 读写（结果文件填报）
+
+matplotlib==3.10.8     # 全部插图
+scipy==1.17.1          # 统计检验（周期性分析等）
+
+# 以下仅论文文档生成用，不跑 docx 可以不装
+python-docx==1.2.0     # 生成《问题X 模型与工作流.docx》
+Pillow==12.3.0         # 读 PNG 尺寸，换算公式图片宽度
+
+pypdf==6.17.0          # 阅读 C题.pdf（非必需）

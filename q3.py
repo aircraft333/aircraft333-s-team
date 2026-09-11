@@ -55,6 +55,12 @@ REL_H = (0, 6, 12, 18)            # 附件3 的预报发布时刻（题目给定
 DECIDE_H = (0, 6, 12, 18)         # 实际做决策 / 调整的时刻（可加密；每个时刻取最近一次已发布预报）
 LOAD_LAG = 7                      # 负载日前预测：上周同一天
 PV_MIX = 0.4                      # 光伏预报 = mix·附件3(整点插值) + (1−mix)·前3天均值
+# 逐决策时刻的光伏混合权重（None = 全天统一用 PV_MIX）。
+# 依据：附件3 的预报精度随发布时刻推后而改善，故最优混合权重会随时段抬高；
+# 而 18:00 时段（19:00-24:00）光伏恒为 0，纯历史外推反而最准。
+# 实测各时刻 MAE 最优权重：0:00→0.4、6:00→0.6、12:00→0.8、18:00→0.0
+# （见 q3_mix_epoch.py / q3_分时段光伏权重.txt）
+PV_MIX_BY_EPOCH = None
 HEDGE = 300.0                     # 标量模式下的固定裕量 (kW)，作用于计划与调整两个阶段
 # 安全裕量口径（`q3_hedge_q.py` + `q3_tune_plot.py` → `q3_裕量寻优.txt` / `q3_裕量灵敏度.txt`）
 # 报童模型在两个阶段给出不同的临界分位：
@@ -89,7 +95,7 @@ U_SLOT = (np.arange(N_SLOT) + 1) / 6.0        # 各时段右端点对应的「�
 # =====================================================================
 # 一、预报构造
 # =====================================================================
-def build_pv_forecast(df3, dates, G, decide_h=DECIDE_H, mix=PV_MIX, mix_hist=None):
+def build_pv_forecast(df3, dates, G, decide_h=DECIDE_H, mix=None, mix_hist=None):
     """构造 (len(decide_h), D, 144) 的逐槽光伏预报：决策时刻 × 天数 × 时段
 
     口径（经附件数据标定）：附件3 的「预报k小时」是发布后第 k 个**整点时刻**的
@@ -100,10 +106,18 @@ def build_pv_forecast(df3, dates, G, decide_h=DECIDE_H, mix=PV_MIX, mix_hist=Non
     该预报覆盖 rel+1 … rel+24 时，对本日剩余时段全部有效。
     已发生时段的实际值视为已知，直接填入实际功率。
 
-    mix：附件3 预报与历史外推（前 mix_hist 天滑动平均）的线性混合权重，
-         mix=1 表示完全采用附件3。历史外推用于平滑附件3 的随机误差。
+    mix：附件3 预报与历史外推（前 mix_hist 天滑动平均）的线性混合权重。
+         · 标量：所有决策时刻用同一个权重；
+         · 长度 == len(decide_h) 的序列：逐决策时刻分别指定；
+         · None：取模块配置 PV_MIX_BY_EPOCH，若也为 None 则全天统一用 PV_MIX。
+         mix=1 表示完全采用附件3；历史外推用于平滑附件3 的随机误差。
     """
     mix_hist = PV_HIST_N if mix_hist is None else mix_hist
+    if mix is None:
+        mix = PV_MIX_BY_EPOCH if PV_MIX_BY_EPOCH is not None else PV_MIX
+    mixes = ([float(mix)] * len(decide_h) if np.isscalar(mix)
+             else [float(m) for m in mix])
+    assert len(mixes) == len(decide_h), "mix 序列长度必须等于决策时刻数"
     D = len(dates)
     hist = fc_ma(G, mix_hist, G[0])                      # 历史外推（只用历史）
     out = np.full((len(decide_h), D, N_SLOT), np.nan)
@@ -121,7 +135,8 @@ def build_pv_forecast(df3, dates, G, decide_h=DECIDE_H, mix=PV_MIX, mix_hist=Non
             xs = np.array(sorted(fh))
             ys = np.array([fh[x] for x in xs])
             f = np.interp(U_SLOT, xs, ys)                # 整点值 → 逐槽插值
-            g = mix * f + (1.0 - mix) * hist[i]          # 与历史外推混合
+            m = mixes[ri]
+            g = m * f + (1.0 - m) * hist[i]              # 与历史外推混合
             g[:t0] = G[i, :t0]                           # 已发生时段的实际值已知
             out[ri, i] = np.maximum(g, 0.0)
     return out
@@ -160,7 +175,7 @@ def solve_day(pi, L_plan, G_plan, E_start):
 # =====================================================================
 # 三、调整阶段 LP（把逐槽规则精确写进约束）
 # =====================================================================
-def solve_adjust(pi, Lf, Gf, b_plan, E_start, t_from):
+def solve_adjust(pi, Lf, Gf, b_plan, E_start, t_from, full=False):
     """调整 [t_from, 144) 的购电量，最小化「调整费用 + 紧急购电费用」
 
         min Σ_t [ 1.5π_t·δ⁺_t − 0.5π_t·δ⁻_t + 5π_t·e_t + ε·s_t ]·Δt
@@ -175,6 +190,9 @@ def solve_adjust(pi, Lf, Gf, b_plan, E_start, t_from):
     取到各自上界，与逐槽规则 d=min(Δ,上界)、c=min(−Δ,上界) 逐点相同。
 
     返回 (144,) 的**完整**购电量数组（[0, t_from) 段原样保留）。
+    full=True 时改为返回 dict(b, c, d, s, e, E)：其中 e 是 **LP 自己认为**的紧急
+    购电量（仅 [t_from, 144) 段），供 `q3_embed_check.py` 验证「LP 内部假设」与
+    「逐槽规则执行」是否逐点一致。
     """
     T = N_SLOT
     n = T - t_from
@@ -203,6 +221,11 @@ def solve_adjust(pi, Lf, Gf, b_plan, E_start, t_from):
     m.solve(pulp.PULP_CBC_CMD(msg=False))
     if pulp.LpStatus[m.status] != "Optimal":
         raise RuntimeError(f"调整阶段求解失败：{pulp.LpStatus[m.status]}")
+    if full:
+        out = {k: np.array([v.value() for v in arr], dtype=float)
+               for k, arr in (("b", b), ("c", c), ("d", d), ("s", s),
+                              ("e", e), ("E", E))}
+        return out
     out = b_plan.copy()
     out[t_from:] = [v.value() for v in b]
     return np.array(out, dtype=float)
@@ -296,11 +319,12 @@ def build_hedge_q3(L, L1, dates, q=HEDGE_PARAM, win=HEDGE_WIN,
     return q2.build_hedge(L - F0, "quantile", q, win)
 
 
-def run_year(df3, dates, L, G, pi, L1, G1, decide_h=DECIDE_H, mix=PV_MIX,
+def run_year(df3, dates, L, G, pi, L1, G1, decide_h=DECIDE_H, mix=None,
              hedge=None, adapt=ADAPT, quiet=False):
     """跑完整一年，返回 (recs, 汇总字典)
 
     逐日储能初值连续（当天 24:00 的储电量接到次日 0:00）。
+    mix=None 时取模块配置 PV_MIX_BY_EPOCH（若为 None 则退化为 PV_MIX 标量）。
     hedge=None 时按模块配置 HEDGE_MODE 决定裕量：
         "quantile" → 逐日逐时段分位数矩阵；"scalar" → 全天固定 HEDGE kW。
     也可显式传入标量（用于 q3_tune.py 之类的参数扫描）或 (D,144) 矩阵。
@@ -373,8 +397,13 @@ def main():
     log(f"决策时刻：0:00 制定计划；随后 {', '.join(f'{h}:00' for h in DECIDE_H[1:])} 依次调整")
     log(f"（附件3 的预报发布时刻为 {', '.join(f'{h}:00' for h in REL_H)}；决策时刻取其最近一次已发布预报）")
     log(f"光伏预报口径：附件3『预报k小时』= 发布后第 k 个整点时刻的点值 → 整点线性插值到 10 分钟时段")
-    log(f"光伏预报组合：{PV_MIX:.0%} 附件3 + {1 - PV_MIX:.0%} 前 {PV_HIST_N} 天滑动平均"
-        f"（附件3 单用 MAE 191.7 kW，历史外推 152.7 kW，混合后 130.6 kW）")
+    if PV_MIX_BY_EPOCH is not None:
+        log("光伏预报组合（分决策时刻）：" + "，".join(
+            f"{h}:00 用 {m:.0%}" for h, m in zip(DECIDE_H, PV_MIX_BY_EPOCH))
+            + f" 的附件3（其余为前 {PV_HIST_N} 天滑动平均）")
+    else:
+        log(f"光伏预报组合：{PV_MIX:.0%} 附件3 + {1 - PV_MIX:.0%} 前 {PV_HIST_N} 天滑动平均"
+            f"（附件3 单用 MAE 191.7 kW，历史外推 152.7 kW，混合后 130.6 kW）")
     log(f"负载日前预测：上周同一天（lag={LOAD_LAG} 天，只用历史）")
     log(f"安全裕量口径：" + (f"逐时段取历史 {HEDGE_WIN} 天负载预报误差的 "
         f"{HEDGE_PARAM:.2f} 分位数（报童模型）" if HEDGE_MODE == "quantile"
@@ -387,7 +416,8 @@ def main():
 
     # ---------- 全年求解 ----------
     rule("【2】全年滚动求解")
-    recs, s = run_year(df3, dates, L, G, pi, L1, G1, DECIDE_H, PV_MIX, None, ADAPT)
+    recs, s = run_year(df3, dates, L, G, pi, L1, G1, DECIDE_H, PV_MIX_BY_EPOCH,
+                       None, ADAPT)
 
     # ---------- 汇总 ----------
     rule("【3】全年结果汇总（2025.2.1 - 12.31）")
@@ -619,7 +649,8 @@ def ablation():
     base = None
     rows = []
     for nm, ep in cases:
-        recs, s = run_year(df3, dates, L, G, pi, L1, G1, ep, PV_MIX, None, quiet=True)
+        recs, s = run_year(df3, dates, L, G, pi, L1, G1, ep, PV_MIX_BY_EPOCH,
+                           None, quiet=True)
         if base is None:
             base = s["cost_total"]
         rows.append((nm, s["cost_total"], base - s["cost_total"],

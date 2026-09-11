@@ -32,6 +32,7 @@ EXPECT = {
     "无裕量（hedge=0）": None,      # README 记为 14,236,243.7，待核
 }
 README_HEDGE0 = 14236243.7
+arm_report(TXT)                  # 长跑安全网：中途异常也不丢已算出的报告
 
 
 def main():
@@ -69,6 +70,24 @@ def main():
         log("  %-24s %10.0f %14.1f %14.1f %14.1f %14.1f   (%2.0fs)"
             % (tag, hv, s["cost_plan"], s["cost_dev"] - s["cost_plan"],
                s["cost_emg"], s["cost_total"], time.time() - t1))
+
+    # 文档 §4.6 的对照表里还列了「固定 300 kW」一列的电量，这里一并给出，
+    # 避免那批数字只能从控制台临时读取、事后无法溯源。
+    rule("三个锚点的电量明细（kWh）")
+    hdr2 = ("  %-24s %14s %14s %14s %14s %14s %14s"
+            % ("裕量取法", "计划购电量", "调整后购电量", "紧急购电量",
+               "充电量", "放电量", "弃光量"))
+    log(hdr2)
+    log("  " + "-" * (len(hdr2) + 2))
+    for tag, _h in cases:
+        s = res[tag]
+        log("  %-24s" % tag + "".join(
+            "%14s" % format(v, ",.1f") for v in
+            (s["q_plan"], s["q_adj"], s["q_emg"],
+             s["q_ch"], s["q_dis"], s["q_curtail"])))
+    log("")
+    log("  （问题三主方案口径：mix=%.2f、adapt=%.2f、决策时刻 %s）"
+        % (q3.PV_MIX, q3.ADAPT, q3.DECIDE_H))
 
     rule("与文档记载值比对")
     for tag, exp in EXPECT.items():

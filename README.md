@@ -3,28 +3,43 @@
 ## 运行环境
 
 - **Python 3.13**：`C:\Users\dell\AppData\Local\Programs\Python\Python313\python.exe`
-- 依赖：`pulp`（COIN-OR CBC 求解器）、`pandas`、`numpy`、`openpyxl`、`matplotlib`、`scipy`
+- 依赖安装：`pip install -r requirements.txt`
+  （核心只需 `pulp`/`numpy`/`pandas`/`openpyxl`；`matplotlib`/`scipy` 用于绘图与统计；
+   `python-docx`/`Pillow` 仅用于生成《问题X 模型与工作流.docx》）
 - 所有脚本开头都是 `from config import *`；**相对路径一律相对项目根目录**（即 `config.py` 所在目录），
   从任意工作目录运行都能找到附件与结果模板。
+- 写 `result*.xlsx` 前**请关闭 Excel 中的同名文件**；代码已加占用预检，会明确提示该关哪个文件。
 
 ## 快速开始
+
+```powershell
+python run_all.py --list    # 先看有哪些步骤（不执行）
+python run_all.py --main    # 一键跑 4 个主程序，产出全部 result*.xlsx（约 25 分钟）
+python run_all.py           # 全部跑一遍，含敏感性/寻优/文档生成（约 60~75 分钟）
+```
+
+也可以单个跑：
 
 ```powershell
 python data_analysis.py   # 问题一数据探索（输出 6 张图 + 文字报告）
 python q1.py              # 问题一  → result1.xlsx
 python q2.py              # 问题二  → result2.xlsx
-python q3.py              # 问题三  → result3.xlsx
-python q2_diag.py > q2_口径诊断.txt    # 储能执行口径对比诊断
+python q3.py              # 问题三  → result3.xlsx + q3_题目指定日期表格.xlsx
+python q4.py              # 问题四  → result4-2.xlsx / result4-3.xlsx
 ```
 
 各主程序都支持命令行参数来切口径（详见文件头 docstring），不带参数时写官方文件名。
+另外 `make_q3_tables.py` 会从 `result3.xlsx` 生成论文用的三张表格 LaTeX（`问题三_表格.tex`）。
 
 ## 文件地图
 
 | 文件 | 作用 | 产出 |
 |---|---|---|
 | `config.py` | **公共库**：路径/常量/绘图风格/时间处理/附件读取/峰谷划分/日前预测/`simulate_dispatch` 逐槽执行 | — |
+| `requirements.txt` | 运行依赖（带版本号） | — |
+| `run_all.py` | **一键复现**（支持 `--list` / `--main` / `--fast` / `--only` / `--from`） | 全部产出 |
 | `data_analysis.py` | 问题一数据探索 | `figures/q1/fig1~6`、`q1_数据分析结果.txt` |
+| `data_overview.py` | **四个附件的数据概览**（论文「数据说明」一节的出处） | `数据概览.txt` |
 | `q1.py` / `storage.py` | 问题一 MILP（两份实现，结果完全一致） | `result1.xlsx`、`storage.xlsx` |
 | `test_model1.py` | 问题一对照实验（变电价 / 变负载 / 用基准日光伏） | `figures/q1/figA~C` |
 | `q1_sensitivity.py` | **问题一敏感性：电价结构 / 储能参数 / 输入偏差** | `figures/q1/fig_敏感性分析.png`、`q1_敏感性分析.txt` |
@@ -35,6 +50,7 @@ python q2_diag.py > q2_口径诊断.txt    # 储能执行口径对比诊断
 | `q2_rt.py` | 储能执行口径对比（按计划 / 实时再调度） | `q2_实时再调度对比.txt` |
 | `q2_peer.py` | 与队友方案的 2×2 对标 | `q2_对标队友.txt` |
 | `q2_periodicity.py` | **负载周周期性分析**（支撑 lag=7 预测） | `figures/q2/` 下 `figA`~`figD` 四张单图 + `fig_负载周周期性.png` 组合图、`q2_负载周周期性.txt` |
+| `q2_pv_forecast.py` | **光伏为何用前 3 天滑动平均**（周周期性 + 窗口扫描 + 全年费用复验） | `figures/q2/figPV_A~D`、`fig_光伏预报依据.png`、`q2_光伏预报方法.txt` |
 | `q2_diag.py` | 逐槽被动平衡 vs 完全信息最优 诊断 | `q2_口径诊断.txt` |
 | `q2_sensitivity.py` | **问题二敏感性：预测精度 / 紧急电价倍率 / 裕量分位数** | `figures/q2/fig_敏感性分析.png`、`q2_敏感性分析.txt` |
 | `q2_fine_tune.py` | **裕量参数精细寻优：分位水平 q × 回看窗口 win** | `q2_裕量精细寻优.txt` |
@@ -48,7 +64,9 @@ python q2_diag.py > q2_口径诊断.txt    # 储能执行口径对比诊断
 | `q3_tune_plot.py` | 问题三裕量：全年分位曲线补算 + 绘图 | `figures/q3/fig_裕量灵敏度.png`、`q3_裕量灵敏度.txt` |
 | `q3_mix_recheck.py` | **`mix` 在最终口径下的复检**（原寻优是坐标轮换，基线为 `hedge=0, adapt=0`） | `q3_光伏权重复检.txt` |
 | `q3_mix_robust.py` | **`mix` 0.30 vs 0.40 的分段稳健性检验**（三段各约 111 天） | `q3_光伏权重稳健性.txt` |
+| `q3_mix_epoch.py` | **分时段光伏权重实验**（负面结果：MAE 最优 ≠ 费用最低，保持全天统一 0.4） | `q3_分时段光伏权重.txt` |
 | `q3_anchor_check.py` | **问题三「口径递进」三锚点复算**（无裕量 / 固定 300 / 报童分位） | `q3_口径递进锚点.txt` |
+| `q4_price_effect.py` | **问题四：固定 vs 波动电价的受控分解**（定位涨价机理） | `q4_电价波动效应分解.txt` |
 
 > **问题三的表1/表2/表3（题目指定的 4 个日期）**：由 `q3.py` 主流程直接导出到
 > **`q3_题目指定日期表格.xlsx`**（工作表：表1 购电量 / 表2 充放电量 / 表3 紧急购电），

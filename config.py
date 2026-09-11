@@ -144,6 +144,34 @@ def write_report(path):
     with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(REPORT))
     print(f"\n分析结果已写入 {path}")
+    _ARMED.discard(os.path.abspath(path))
+
+
+_ARMED = set()
+
+
+def arm_report(path):
+    """长跑脚本的安全网：注册出口自动落盘
+
+    动机：这类脚本要跑几分钟到十几分钟，正常流程里 write_report() 在**最后**
+    调用。若在打印/汇总阶段发生异常（哪怕只是格式串写错），全部计算结果都会
+    丢掉。arm_report(path) 把 write_report 挂到 atexit，异常退出时也能把已
+    记入 REPORT 的内容存盘；若脚本正常走到了 write_report，安全网自动失效，
+    不会重复写。
+    """
+    import atexit
+
+    p = os.path.abspath(path)
+    _ARMED.add(p)
+
+    def _flush():
+        if p in _ARMED:
+            try:
+                write_report(path)
+            except Exception:
+                pass
+
+    atexit.register(_flush)
 
 
 def stat_line(name, arr, unit=""):
@@ -477,7 +505,7 @@ __all__ = [
     "setup_plot", "save_fig",
     # 报告
     "REPORT", "log", "rule", "write_report", "stat_line",
-    "xlsx_locked", "save_wb",
+    "xlsx_locked", "save_wb", "arm_report",
     # 时间
     "parse_time_to_min", "to_min", "fmt",
     # 数据
