@@ -25,110 +25,199 @@
 \maketitle
 
 \begin{abstract}
-            
+    随着“双碳”目标的推进和微网系统的快速发展，微网系统的经济调度成为促进新能源就地消纳、降低用能成本的关键。为此，本文在分时电价机制下，基于给定的电价、小区负载、光伏发电预测等数据，建立数学模型，协调外部电网购电和储能设备充放电，以实现经济效益最大化。\newline \hspace*{2em}
+    针对问题一，本文首先对电价、小区负载、光伏发电预测等数据进行了可视化分析，为进一步建模提供支撑。在所有变量完全已知的情况下，确认这是一个确定性优化问题，结合6个约束条件，建立以\textbf{全天费用最小}为目标函数的\textbf{线性规划（LP）模型}。求解得到全天各时段的计划购电量与储能充放电调度方案。得到全天总购电量为\textbf{59482.6990 kWh},全天总购电费为\textbf{35126.9486 元}。\newline \hspace*{2em} 
+          
             \keywords{关键词1\quad  关键词2\quad   关键词3}
         \end{abstract}
         \section{问题重述}
         \subsection{问题背景}
-        在生鲜商超中，蔬菜作为主要的生鲜商品之一，其销量的变化直接影响到商超的经营效益。然而，蔬菜类商品的保质期较短，且品相随销售时间的增加而变差。因此，了解蔬菜的销售规律，根据历史销售数据和需求情况制定补货量和定价策略尤为重要。
+       随着“碳达峰、碳中和”目标的推进，以光伏为代表的分布式能源正经历跨越式发展。微网能解决大规模并网带来的反向潮流、电压波动等问题，成为新型电力系统的发展趋势。而外网普遍实行峰谷分时电价机制，电价在不同时段存在显著差异。为了满足小区的负载且节省微网的购电费用，建立数学模型制定合理的购电策略和储能设备的充放电量尤为重要。
         \subsection{问题重述}
-        本研究结合所提供的销量数据，旨在通过数据分析和建模方法，解决以下四个问题：
-        \newline
-        \quad\textbf{问题一:}分析数据，研究各品类蔬菜及各单品销量随时间的分布规律和相互关系。
-        \newline
+        \quad\textbf{问题一:}
+        \begin{itemize}
+            \item 假设每天电价与小区负载固定。
+            \item 要求微网提供的电能不可低于小区负载，且储能设备在 0:00 和 24:00 的储电量相同。
+            \item 根据光伏发电功率一天的预测数据，给出每天 0:00 制定微网当天的计划购电策略的数学模型。
+        \end{itemize}
+        
         \quad\textbf{问题二:}
-        \newline
+        \begin{itemize}
+        \item 假设每天电价恒定，但小区负载与光伏发电功率随时间波动。
+        \item 要求若计划供电量低于实际负载需以5倍实时电价紧急购电；常规时段购电仍按计划购电量计费。
+        \item 给出每天
+0:00 制定微网当天的计划购电策略。
+\end{itemize}
         \quad\textbf{问题三:}
-        \newline
+        \begin{itemize}
+        \item 假设每天0:00、6:00、12:00 和 18:00 可获得未来 24 小时整点的光伏发电功率预报，允许每天滚动调整购电策略。
+        \item 要求：计划购电量高于调整购电量的部分，违约电价是交易时刻电价的 50\%；调整购电量高于计划购电量的部分，超出部分的电价按交易时刻电价的 1.5 倍支付。总的购电费用包括计划购电费用、紧急购电费用和调整购电量的相关费用。
+        \item 建立微网当天购电策略的数学模型
+        \end{itemize}
+        
         \quad\textbf{问题四:}
+        针对外网电价实时波动，建立微网当天购电策略的数学模型。
+       
         \section{问题分析}
         \subsection{问题一的分析}
-        问题一并未明确指出具体的分析目标，考虑到销售量的分布规律可能分为按时间分布、按订单数量分布、按蔬菜品类分布，我们将分析目标定为研究各品类蔬菜及单品的销售量在一年、一个星期和一天内的分布规律；此外，相互关系可分为各品类蔬菜销量的相互关系和各单品销量之间的关系。为此，我们将对数据进行时间序列分析，使用统计方法和可视化工具来揭示销售量的趋势、季节性和周期性特征。同时，我们将计算各品类蔬菜及单品之间的相关系数，以了解它们之间的相互关系。
+        问题一要求在每天 0:00 制定微网当天的计划购电策略的数学模型。具体条件为每天电价与小区负载固定，满足微网提供的电能不可低于小区负载，且储能设备在 0:00 和 24:00 的储电量相同的需求。由于所有输入数据均为已知常量，故该问题为一个确定性优化问题。可以通过数学方法算出最小值，且所有约束条件均可转化为线性等式或不等式，故选择线性规划(LP)模型。求解时，通过Python的PuLP库构建模型，调用CBC求解器，求出全局最优解。
+    \begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{问题1思维框架.png}
+    \caption{问题1思维框架}
+    \label{fig:circuit-diagram}
+    \end{figure}
         \subsection{问题二的分析}
+        问题二要求在每天 0:00 制定微网当天的计划购电策略的数学模型。具体条件为每天电价固定，
         \subsection{问题三的分析}
+        \subsection{问题四的分析}
         \section{模型假设}
-        1.假设各蔬菜品类及单品的市场需求不受市场竞争的影响。\newline
-        \hspace*{2em}2.假设蔬菜的销售量与价格之间存在一定的关系，且该关系在一定时间范围内保持稳定。\newline
-        \hspace*{2em}3.假设假设各商品之间的需求关联仅存在于同一销售周期内，不考虑“今日未购买则明日补购”的跨期替代效应。
+       1.假设每日电价完全相同，微网不会影响电价。\newline
+       \hspace*{2em}2.每日用户用电量完全一致。（仅第一问假设）\newline 
+       \hspace*{2em}3.光伏发电量过大而弃光时无额外能量损耗。\newline 
+       \hspace*{2em} 4.储能设备在 0:00 和 24:00 的储电量完全相同。（仅第一问假设）
         \section{符号说明}
         \begin{center}
             \begin{tabular}{cc}
                 \hline
-                \makebox[0.3\textwidth][c]{符号}	&  \makebox[0.4\textwidth][c]{意义} \\ \hline
-                D	    & 木条宽度（cm） \\ \hline
+                \makebox[0.3\textwidth][c]{符号} & \makebox[0.4\textwidth][c]{意义} \\ \hline
+                $c_t$ & 第t时段的外网电价 \\ \hline
+                $L_t$ & 第t时段的小区负载功率 \\ \hline
+                $P_{pv,t}$ & 第t时段的光伏预测功率 \\ \hline
+                $P_{max}=5000\text{kW}$ & 储能最大充放电功率 \\ \hline
+                $E_{min}=1200\text{kWh},\ E_{max}=10800\text{kWh}$ & 储能安全区间 \\ \hline
+                $E_0=\mathsf{E}_T=6000\text{kWh}$ & 储能始末电量 \\ \hline
+                $\eta_{ch}=0.9$ & 充电效率 \\ \hline
+                $\eta_{dis}=0.9$ & 放电效率 \\ \hline
+                $P_{buy,t}\ge 0$ & 微网向外网购电功率 \\ \hline 
+                $P_{ch,t}\ge 0$ & 储能充电功率 \\ \hline
+                $P_{dis,t}\ge 0$ & 储能放电功率\\ \hline 
+                $P_{curt,t}\ge 0$ & 弃光功率\\ \hline 
+                $u_t\in \{0,1\}$ & 充放电状态互斥0-1变量 \\ \hline
+                $E_t$ &第t时段结束时储能的存储电量\\ \hline
+
             \end{tabular}
         \end{center}
-        \section{数据预处理}
-        \subsection{异常数据处理}
-        通过分析附件发现存在缺失值，我们将其视为无效数据并予以剔除。对于因退货导致销售额小于零的数据，其对研究销售分布规律无益处，也予以剔除。对于附件1里有、但附件2中没有任何销售记录（无销量）或销售天数过少（$\leq 10$天）、销售占比过小（$\leq0.00003$）的单品，予以剔除。
-        \begin{figure}
+        
+   
+    \section{问题一模型的建立与求解}
+    \subsection{模型建立}
+    问题1在每天电价和小区负载相同且已知全天光伏发电功率预测数据的理想条件下，制定微网当天的计划购电策略，由于所有输入数据均为已知常量，故该问题为一个确定性优化问题，选择线性规划(LP)模型。
+    \subsection{数据预处理}
+    本小节主要详细介绍对数据的预处理。首先对光伏、负载、电价的日内变化进行可视化处理，直观展示了三者时间错位的特征；其次，分析光伏、负载、电价的相关性，发现光伏预测与净负荷呈极强负相关，证明将负载和光伏合并为净负荷的合理性。这些数据的处理为后续模型的建立提供了有力的支撑。
+    \subsubsection{光伏、负载、电价可视化分析}
+     绘制图2展示光伏、负载、电价的时序分布发现电价呈现典型的峰谷分时特征，峰谷价差显著，为储能套利提供了经济空间；小区负载具有早晚双峰的特征，且在傍晚高峰时段与电价峰段重合，导致购电成本巨大；光伏供电功率具有明显的间歇性，仅在日间（约6:00-18:00）发电，峰值出现在正午，与电价晚高峰存在明显时间错位，必须引入储能设备作为缓冲。
+    \begin{figure}[!h]
     \centering
-    \begin{minipage}[c]{0.48\textwidth}
-        \centering
-        \includegraphics[width=0.95\textwidth]{销售天数直方图.png}
-        \subcaption{销售天数直方图}
-        \label{fig:sample-figure-a}
-    \end{minipage}\hfill
-    \begin{minipage}[c]{0.48\textwidth}
-        \centering
-        \includegraphics[width=0.95\textwidth]{销量占比直方图.png}
-        \subcaption{销量占比直方图}
-        \label{fig:sample-figure-b}
-    \end{minipage}
-    
-    
-    \label{fig:sample-figure}
+    \includegraphics[width=0.6\textwidth]{逐小时.png}
+    \caption{电价/小区负载/光伏发电预测功率日内变化}
+    \label{fig:circuit-diagram}
 \end{figure}
-        \subsection{}
-        \section{问题一模型的建立与求解}
-        \subsection{基于自相关函数ACF的时间序列分析}
-        \subsubsection{ACF的计算}
-        $ACF(k)=\frac{Cov(y_t, y_{t-k})}{Var(y_t)}$，其中$k$为滞后阶数，$y_t$表示在$t$这个时间的观测数据，$y_{t-k}$表示在$t-k$这个时间的观测数据，$Cov$表示协方差，$Var$表示方差。
-        \subsubsection{ACF图的绘制}
-        根据ACF的计算结果，绘制ACF图，横轴为滞后天数，纵轴为自相关系数。
-        \subsubsection{ACF图的解释}
-        相关系数在滞后阶段0处为1，因为时间序列在同一个时间点上的值与自身的相关性始终是1。
-        \newline
-        若ACF图在之后的滞后阶段上有正相关性，则说明存在季节性。\newline 若ACF图在之后的滞后阶段上有负相关性，则说明存在反向季节性。\newline 若ACF图在之后的滞后阶段上基本为0，则说明基本无关。
-        \subsection{时间分布规律的求解结果}
-        \textbf{(a)各品类一年内月度销量的分布结果}
-        各品类蔬菜三年平均的月度销售量变化如图1：
-        \begin{figure}[!h]
+\subsubsection{光伏、负载、电价相关性分析}
+     绘制电价、小区负载、光伏预测、净负荷（负载-光伏）两两之间的相关性热力图如图3所示，可以发现光伏预测与净负荷呈极强负相关，因此将负载和光伏合并为净负荷以降低后续模型的复杂度；电价与小区负载正相关，显示小区用电量较大时，外网购电价格通常更高，直观展示了引入储能设备作为缓冲的必要性。
+     \begin{figure}[!h]
     \centering
-    \includegraphics[width=0.8\linewidth]{a.png}
-    \caption{一年各品类销售量变化图}
+    \includegraphics[width=0.6\textwidth]{热力图.png}
+    \caption{相关性热力图}
     \label{fig:circuit-diagram}
 \end{figure}
 
-考虑到蔬菜的产量受气候变化和节假日影响以及蔬菜的生长周期，因此以一个月为最小单位，分析各品类蔬菜销售量是否存在一年内的周期性变化。
-\newline \hspace{2em}通过ACF图可以看出在与滞后阶段0相差12个月，通过观察图3，可以看出总销售量在春节和秋季会有大幅度增长，推测是由于春节期间人们采购年货和秋季农业丰收。 \newline
-\textbf{(b)总销量一周内销量分布结果}
-\begin{figure}[!h]
+ \begin{figure}[!h]
     \centering
-    \includegraphics[width=0.8\linewidth]{一周内销量变化.png}
-    \caption{一周内总销量变化图}
+    \includegraphics[width=0.6\textwidth]{套利门槛.png}
+    \caption{电价/小区负载/光伏发电预测功率日内变化}
     \label{fig:circuit-diagram}
 \end{figure}
-由于人们工作是以周为单位，人们可能习惯将一周的蔬菜购买完，因此以一天为最小单位，分析总销量在一周内是否存在周期性变化的变化。\newline \hspace{2em} 分析一周内销量直方图，可以得到，每周一销量达到谷值，每周六销量达到峰值。这可能是因为人们习惯在结束一周的工作后将一周的蔬菜购买完，而工作日由于工作繁忙导致人们的购买欲望下降，蔬菜的销量在较低范围内波动。\newline
-\subsection{销量分布规律的探究}
-\subsubsection{销量占比}
-绘出单品累计占比曲线如图可得，蔬菜高销售额单品只占少部分，大部分的商品销售量较低，前42个单品贡献了总销量的80\%，呈现明显的长尾分布。
-\newline \hspace{2em} 各品类销售占比也存在较大差异，通过绘制各品类销量占比图如图5，发现花叶类销量占比最大，其次为辣椒类和食用菌，茄类销量占比最小。\newline \hspace{2em} 通过统计各品类品种丰富度，发现其与销量占比吻合，花叶类品种最为丰富，辣椒类和食用菌其次，茄类丰富度最低。
-\begin{figure}[!h]
+    \subsection{约束条件}
+    模型需满足以下约束：
+    \begin{enumerate}
+        \item 微网电力供需平衡约束：
+        \[
+        P_{buy,t}+P_{pv,t}+P_{dis,t}-P_{ch,t}-P_{curt,t} \ge L_t,
+        \qquad t=1,2,\ldots,T.
+        \]
+        \item 储能电池状态转移方程：需要引入储能设备的荷电状态，建立相邻时间段储能电量与充放电量递推关系，
+        \[
+        E_t = E_{t-1}+\eta_{ch}\cdot P_{ch,t}\Delta t-\frac{P_{dis,t}}{\eta_{dis}} \cdot \Delta t,
+        \qquad t=1,2,\ldots,T.
+        \]
+        \item 储能荷电状态（SOC）安全上下限：\[E_{min}\leqslant E_t\leqslant E_{max}  \qquad t=1,2,\ldots,T.\]
+        \item 储能始末电量守恒约束:要求储能设备在0:00和24:00的储电量相同，
+        \[
+        E_0=E_T=6000\,\text{kWh}
+        \]
+        \item 充放电功率上下限互斥约束:储能设备在任意时段的充放电功率不能超过其额定的最大充放电功率，
+        \[
+        0\leqslant P_{ch,t}\leqslant u_t\cdot P_{max},\qquad
+        0\leqslant P_{dis,t}\leqslant (1-u_t)\cdot P_{max},\qquad
+        u_t\in\{0,1\}.\qquad t=1,2,\ldots,T.
+        \]
+        \item 购电非负性约束:
+        仅考虑微网向外网单向购电，
+        \[
+        P_{buy,t}\ge 0,\qquad P_{curt,t}\ge 0,\qquad t=1,2,\ldots,T.
+        \]
+        \end{enumerate}
+    
+    \subsection{模型求解}
+     考虑到经济效益，为使全天购电总费用最小，目标函数为：
+     \begin{equation}
+     min \mathbf{Z} =\sum_{t= 1}^{T} c_t\cdot (P_{buy,t}\cdot \Delta t) 
+     \end{equation}
+
+     将所需变量代入线性规划模型（见附录）中，在约束条件下使得目标函数的值最小，得到当天购电策略如表1、表2。
+
+    \begin{table}[h]
     \centering
-    \includegraphics[width=0.8\linewidth]{销量占比.png}
-    \caption{单品累计占比曲线}
-    \label{fig:circuit-diagram}
-\end{figure}
-\begin{figure}[!h]
+    \caption{\textbf{微网在指定时间段的购电量及全天的购电量和购电费}}
+
+    \label{tab:storage_energy}
+
+    \begin{tabular}{|c|c|c|c|c|c|}
+    \hline
+    时间段 & 购电量 & 时间段 & 购电量 & 时间段 & 购电量 \\
+    \hline
+    10:00-10:10 & 0.0000 & 12:00-12:10 &480.4125  & 14:00-14:10& 0.0000 \\
+    \hline
+    16:00-16:10 & 445.4136 & 18:00-18:10 & 531.8940 & 20:00-20:10 & 0.0000\\
+    \hline
+    
+    \multicolumn{2}{|c|}{全天购电量} & 59482.6990  & \multicolumn{2}{|c|}{全天购电费} &  35126.9486\\
+    \hline
+    \end{tabular}
+
+    \end{table}
+   
+    \begin{table}[h]
     \centering
-    \includegraphics[width=0.8\linewidth]{各品类销售规律.png}
-    \caption{各品类销量占比与品类品种丰富度}
-    \label{fig:circuit-diagram}
-\end{figure}
-        \subsection{模型求解}
+    \caption{\textbf{储能设备在指定时间段的充放电量及0:00与24:00的储电量}}
+
+    \label{tab:storage_energy}
+
+    \begin{tabular}{|c|c|c|c|c|c|}
+    \hline
+    时间段 & 充电量 & 放电量 & 时间段 & 充电量 & 放电量 \\
+    \hline
+    0:00-4:00 & 4500.0000 & 0.0000 & 4:00-8:00 & 833.3333& 6365.8412 \\
+    \hline
+    8:00-12:00 & 4787.9643 & 1702.9970 & 12:00-16:00 & 5286.0352 & 91.1014 \\
+    \hline
+    16:00-20:00 & 0.0000 & 5780.1319 & 20:00-24:00 & 5333.3333 & 2859.8681 \\
+    \hline
+    \multicolumn{2}{|c|}{0:00储电量} & 6000.0000 & \multicolumn{2}{|c|}{24:00储电量} & 6000.0000\\
+    \hline
+    \end{tabular}
+
+    \end{table}
         \section{问题二模型的建立与求解} 
         \subsection{模型建立}
+        问题二的电价每日恒定，但小区负载和光伏发电功率具有随机波动性。且若实际供电量低于小区负载需求，需承担高达5倍实时电价的紧急购电惩罚。因此这属于不确定性优化问题。\newline \hspace*{2em}为规避巨额惩罚风险
+        \begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{第二问思维导图.png}
+    \caption{问题二思维框架}
+    \label{fig:circuit-diagram}
+\end{figure}
         \subsection{约束条件} 
         \subsection{模型求解}
         \section{问题三模型的建立与求解} 
@@ -138,6 +227,10 @@
         \begin{equation}\tag{8}
             \sum_{j=16}^{\infty} x_{ijt} + \frac{\sum_{n=1}^{\infty} x_{ijt}}{2} \leq 1,\quad 27\leq i\leq 34
         \end{equation}
+        \section{问题四模型的建立与求解} 
+        \subsection{模型建立}
+        \subsection{约束条件} 
+        \subsection{模型求解}
         \section{模型的评价、改进与推广}
 
         \begin{thebibliography}{9}%宽度9
@@ -145,61 +238,7 @@
         \end{thebibliography}
 
         \begin{appendices}
-        \section{数据预处理算法}
         \begin{lstlisting}[language=Python]
-import pandas as pd
-import matplotlib.pyplot as plt
-plt.rcParams['font.sans-serif'] = [u'simHei']
-plt.rcParams['axes.unicode_minus'] = False
-csv_file = 'data/附件1.xlsx'
-df_1 = pd.read_excel(csv_file)
-
-csv_file = 'data/附件3.xlsx'
-df = pd.read_excel(csv_file)
-df['日期']= pd.to_datetime(df['日期'])
-df['月份']= df['日期'].dt.month
-#分品类
-mapping_dict=df_1.set_index('单品编码')['分类名称'].to_dict()
-df['品类']= df['单品编码'].map(mapping_dict)
-print(df.head(5))
-
-grouped=df.groupby('单品编码')
-result={}
-
-for name, group in grouped:
-    unique_months = group['月份'].unique()
-    total_months = len(unique_months)
-    season = []
-    season_list = [0] * 4
-    if 3 in unique_months or 4 in unique_months or 5 in unique_months:
-        season.append("春季")
-        season_list[0] = 1
-    if 6 in unique_months or 7 in unique_months or 8 in unique_months:
-        season.append("夏季")
-        season_list[1] = 1
-    if 9 in unique_months or 10 in unique_months or 11 in unique_months:
-        season.append("秋季")
-        season_list[2] = 1
-    if 12 in unique_months or 1 in unique_months or 2 in unique_months:
-        season.append("冬季")
-        season_list[3] = 1
-    result[name] = {
-        '出现的月份': unique_months,
-        '总共出现的月份数': total_months,
-        '出现的季节': season,
-        "季节数": len(season),
-        "季节列表": season_list
-    }
-
-count_all = 0
-count_all_list = []
-for key, value in result.items():
-    if value['季节数'] == 4:
-        count_all += 1
-        count_all_list.append(key)
-
-print(count_all)
-print(count_all_list)
- \end{lstlisting}
+        \end{lstlisting}
         \end{appendices}
 \end{document}
