@@ -405,7 +405,7 @@ def main():
             ws.cell(row=row, column=3, value=round(float(r["q_emg"][a // 10:b // 10].sum()), 4))
             row += 1
 
-    wb.save(result_path)
+    save_wb(wb, result_path)
     print(f"\n结果已写入 {result_path}（{TXT_Q2} 为文字汇总）")
 
 if __name__ == "__main__":

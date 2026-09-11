@@ -75,6 +75,7 @@ EPS_CUR = 1e-6                    # 弃光松弛的极小系数（仅用于打�
 PV_HIST_N = 3                     # 历史外推所用天数
 OUT_START = "2025-02-01"
 TXT_Q3 = "q3_结果汇总.txt"
+OUT_KEY3 = "q3_题目指定日期表格.xlsx"      # 题目要求的表1/表2/表3（4 个指定日期）
 KEY_DATES = ["2025-03-20", "2025-06-21", "2025-09-23", "2025-12-21"]
 
 IDX4H = [(0, 24), (24, 48), (48, 72), (72, 96), (96, 120), (120, 144)]   # 6 个 4 小时段
@@ -411,8 +412,9 @@ def main():
         if r is None:
             continue
         log(f"\n—— {ds} ——")
-        log(f"  各时刻储电量入口：" + "  ".join(
-            f"{h}:00 → {E:,.0f} kWh" for h, _t, E in r["epochs_info"]) if r["epochs_info"] else "")
+        if r["epochs_info"]:
+            log("  各时刻储电量入口：" + "  ".join(
+                f"{h}:00 → {E:,.0f} kWh" for h, _t, E in r["epochs_info"]))
         log("  表1 微网购电量（调整后）")
         log("      时间段           购电量(kWh)      时间段           购电量(kWh)")
         for j in range(0, 6, 2):
@@ -436,9 +438,13 @@ def main():
                 log(f"      {fmt_span(a, b):<16s} {r['e'][a // 10:b // 10].sum() * DT_H:>10.2f} kWh")
 
     write_report(TXT_Q3)
-    write_xlsx(recs, resolve(OUT3 if is_default else f"result3_m{PV_MIX:g}h{HEDGE:g}a{ADAPT:g}.xlsx"))
-    print(f"\n结果已写入 {resolve(OUT3 if is_default else 'result3_m%gh%ga%g.xlsx' % (PV_MIX, HEDGE, ADAPT))}"
-          f"（{TXT_Q3} 为文字汇总）")
+    xlsx_path = resolve(OUT3 if is_default
+                        else f"result3_m{PV_MIX:g}h{HEDGE:g}a{ADAPT:g}.xlsx")
+    write_xlsx(recs, xlsx_path)
+    print(f"\n结果已写入 {xlsx_path}（{TXT_Q3} 为文字汇总）")
+    key_path = resolve(OUT_KEY3 if is_default
+                       else f"result3_指定日期表_m{PV_MIX:g}h{HEDGE:g}a{ADAPT:g}.xlsx")
+    print(f"题目指定日期的表1/表2/表3 已写入 {write_key_tables(recs, key_path)}")
 
 
 # =====================================================================
@@ -460,6 +466,87 @@ def seg_range(mask):
 
 def fmt_span(a, b):
     return f"{fmt(a)}-{fmt(b)}"
+
+
+def write_key_tables(recs, path, with_adj=True, dates=KEY_DATES):
+    """把「题目指定日期」的表1 / 表2 / 表3 导出为 Excel
+
+    这三张表原先**只在 q3_结果汇总.txt 的【4】节里以文本形式打印**，没有 Excel
+    交付物。这里补上，分三个工作表，可直接作为论文附件提交。
+
+    with_adj=True  → 表1 同时列出「计划」与「调整」两列（问题三口径，有调整阶段）
+    with_adj=False → 表1 只列「购电量」一列（问题二口径，无调整阶段）
+    返回实际写出的绝对路径。
+    """
+    days = [(ds, r) for ds in dates
+            for r in [next((x for x in recs if x["date"] == pd.Timestamp(ds)), None)]
+            if r is not None]
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+
+    # ---------------- 表1 微网购电量 ----------------
+    ws = wb.create_sheet("表1 购电量")
+    ws.append(["表1 微网购电量（kWh）"])
+    ws.append(["（时段为题目指定的 6 个代表时段，取该时段 10 分钟内的购电量）"])
+    ws.append([])
+    hdr = ["时间段"]
+    for ds, _r in days:
+        hdr += [f"{ds} 计划", f"{ds} 调整"] if with_adj else [f"{ds} 购电量"]
+    ws.append(hdr)
+    for k, lab in enumerate(LAB_REP):
+        row = [lab]
+        for _ds, r in days:
+            row.append(round(float(r["b_plan"][IDX_REP[k]] * DT_H), 4))
+            if with_adj:
+                row.append(round(float(r["b_adj"][IDX_REP[k]] * DT_H), 4))
+        ws.append(row)
+    ws.append([])
+    row = ["全天购电量合计"]
+    for _ds, r in days:
+        row.append(round(float(r["b_plan"].sum() * DT_H), 4))
+        if with_adj:
+            row.append(round(float(r["b_adj"].sum() * DT_H), 4))
+    ws.append(row)
+    row = ["全天购电费（元）"]
+    for _ds, r in days:
+        row.append(round(float(r["cost_plan"]), 4))
+        if with_adj:
+            row.append(round(float(r["cost_dev"]), 4))
+    ws.append(row)
+
+    # ---------------- 表2 储能充放电量 ----------------
+    ws = wb.create_sheet("表2 充放电量")
+    ws.append(["表2 储能充放电量（kWh）"])
+    ws.append([])
+    hdr = ["时段"]
+    for ds, _r in days:
+        hdr += [f"{ds} 充电", f"{ds} 放电"]
+    ws.append(hdr)
+    for k, lab in enumerate(LAB4H):
+        s0, s1 = IDX4H[k]
+        row = [lab]
+        for _ds, r in days:
+            row += [round(float(r["c"][s0:s1].sum() * DT_H), 4),
+                    round(float(r["d"][s0:s1].sum() * DT_H), 4)]
+        ws.append(row)
+    ws.append([])
+    for tag, key in (("0:00 储电量", "E0"), ("24:00 储电量", "E24")):
+        ws.append([tag] + [round(float(r[key]), 4) for _ds, r in days])
+
+    # ---------------- 表3 紧急购电 ----------------
+    ws = wb.create_sheet("表3 紧急购电")
+    ws.append(["表3 紧急购电"])
+    ws.append([])
+    ws.append(["日期", "购电时间段", "购电量（kWh）"])
+    for ds, r in days:
+        segs = seg_range(r["e"] > 1e-6)
+        if not segs:
+            ws.append([ds, "无紧急购电", 0.0])
+            continue
+        for a, b in segs:
+            ws.append([ds, fmt_span(a, b),
+                       round(float(r["e"][a // 10:b // 10].sum() * DT_H), 4)])
+    return save_wb(wb, path)
 
 
 def write_xlsx(recs, path):
@@ -506,9 +593,7 @@ def write_xlsx(recs, path):
             ws.cell(row=row, column=2, value=fmt_span(a, b))
             ws.cell(row=row, column=3, value=round(float(r["e"][a // 10:b // 10].sum() * DT_H), 4))
             row += 1
-    wb.save(path)
-
-
+    save_wb(wb, path)
 # =====================================================================
 # 七、分析：是否需要引入其他时刻的预报
 # =====================================================================

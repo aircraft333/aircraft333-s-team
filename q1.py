@@ -115,7 +115,7 @@ def main(
     ws_batt.cell(row=2, column=5, value=round(float(E_0), 4))        
     ws_batt.cell(row=3, column=5, value=round(float(e_res[-1]), 4)) 
     
-    wb.save(output_file)
+    save_wb(wb, output_file)
 
 if __name__ == "__main__":
     main()

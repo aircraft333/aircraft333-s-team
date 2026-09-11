@@ -33,4 +33,7 @@ _backup/
 # ---- 本地生成的图片（figures/ 下按问号分子目录） ----
 # figures/
 
+# ---- 建模工作流 docx 的公式渲染缓存（可用 make_q3_docx.py 重新生成）----
+_docx_build/
+
 __pycache__/
