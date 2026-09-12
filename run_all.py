@@ -36,6 +36,7 @@ STEPS = [
     ("data_analysis.py", "问题一数据探索", False),
     ("q3_anchor_check.py", "问题三口径递进三锚点复算", True),
     ("q4_price_effect.py", "问题四：固定 vs 波动电价受控分解", True),
+    ("q3_mix_mae.py", "光伏混合权重标定（含各预报源 MAE 横向对比）", False),
 
     # ---------- 三、敏感性与寻优 ----------
     ("q1_sensitivity.py", "问题一敏感性", True),
@@ -57,11 +58,15 @@ STEPS = [
     ("q2_periodicity.py", "负载周周期性分析", True),
     ("q2_pv_forecast.py", "光伏为何用 3 天滑动平均（含图）", True),
     ("q2_peer.py", "与队友方案对标", True),
+    ("q3_embed_check.py", "逐槽规则嵌入 LP 的等价性验证", True),
+    ("q3_hedge_err.py", "裕量误差口径对照（负载 vs 净负荷）", True),
+    ("q3_perfect.py", "完美信息下界（预报误差代价上限）", True),
 
     # ---------- 五、文档与表格生成（放在最后，依赖前面已产出的结果） ----------
     ("make_q3_tables.py", "问题三三张表的 LaTeX（依赖 result3.xlsx）", False),
     ("make_q3_docx.py", "《问题三 模型与工作流.docx》", False),
     ("make_q4_docx.py", "《问题四 模型与工作流.docx》", False),
+    ("paper_figs.py", "论文新增插图（3 张，含现场求解一天 LP）", False),
 ]
 
 # --fast 时跳过的重活
@@ -69,6 +74,7 @@ HEAVY = {
     "q3_tune_l.py", "q3_mix_recheck.py", "q3_mix_robust.py", "q3_mix_epoch.py",
     "q3_hedge_q.py", "q2_multiday.py", "q4.py multiday",
     "q4_price_effect.py", "q3_anchor_check.py", "q2_pv_forecast.py",
+    "q3_embed_check.py", "q3_hedge_err.py", "q3_perfect.py",
 }
 
 

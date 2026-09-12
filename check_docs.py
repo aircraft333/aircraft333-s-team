@@ -66,6 +66,9 @@ TOL_MIN = 5.0        # 新鲜度容忍（分钟），避免「刚改完脚本就
 
 # 大额数字：千分位分组（可带小数）或 ≥5 位整数（可带小数），也认 LaTeX 的 {,}
 NUM_RE = re.compile(r"\d{1,3}(?:\{,\}\d{3}|,\d{3})+(?:\.\d+)?|\d{5,}(?:\.\d+)?")
+# LaTeX/正文里的「集合写法」，如参数网格 {0,200,500,1000,2000}：先清掉，
+# 否则 "200,500,100" 会被当成一个带千分位的数字而误报。
+GRID_RE = re.compile(r"\{[\d,\s]+\}")
 
 # 物理参数 / 题面常量，本来就不该出现在结果报告里
 PARAM_OK = {"6000", "1200", "10800", "12000", "5000", "9600", "2500"}
@@ -202,6 +205,9 @@ def main():
             continue
         matched, unmatched = [], []
         for ln, line in enumerate(scan_text(dp).splitlines(), 1):
+            # 先剔除 LaTeX 集合写法（如网格 {0,200,500,1000,2000}）——
+            # 否则"200,500,100"会被当成一个带千分位的数字。
+            line = GRID_RE.sub("{}", line)
             for m in NUM_RE.finditer(line):
                 # 排除 git 短哈希之类的十六进制串（如 `519668e`）
                 if m.end() < len(line) and line[m.end()] in "abcdefABCDEF":

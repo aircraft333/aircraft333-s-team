@@ -90,6 +90,9 @@ C_PV = "#ff7f0e"                 # 光伏：橙
 C_NET = "#2ca02c"                # 净负荷 / 谷时段：绿
 A_TIER = 0.08                    # 峰谷背景色带透明度
 
+# 子图角标：标题开头形如 "(a)" / "（a）" / "(A)" 时视为定位角标而非说明文字
+_PANEL_RE = re.compile(r"^\s*[（(]\s*([a-zA-Z])\s*[）)]")
+
 
 def setup_plot():
     """统一绘图风格（中文字体、负号、分辨率）。脚本开头调用一次即可。"""
@@ -98,12 +101,50 @@ def setup_plot():
     plt.rcParams["figure.dpi"] = DPI
 
 
-def save_fig(fig, name, figdir=FIG_Q1):
-    """保存图片到 figdir（自动建目录），返回完整路径"""
+def _panel_tag(title):
+    """从子图标题里抽出 "(a)" 这类角标；不是角标则返回 None
+
+    多子图脚本习惯写 ax.set_title("(a) 说明文字…")。论文里说明文字要交给 LaTeX
+    的 \\caption，但 (a)/(b) 这类定位角标必须留着，否则正文没法引用“图 (a)”。
+    这里只把开头的「(字母)」抽出来，其余文字丢弃。
+    """
+    m = _PANEL_RE.match(title or "")
+    return f"({m.group(1)})" if m else None
+
+
+def save_fig(fig, name, figdir=FIG_Q1, keep_title=False, pdf=True):
+    """保存图片到 figdir（自动建目录），返回 PNG 的完整路径
+
+    默认**清空图内标题**（axes.set_title / figure.suptitle）：论文里统一用
+    LaTeX 的 \\caption{} 给图配标题，图内再印一遍会重复，且中文字体与正文不一致。
+    唯一的例外是子图角标：标题以 "(a)" 这类形式开头时，会把角标改画到子图左上角
+    （见 _panel_tag），这样多子图仍可在正文里用“图 (a)”指代。
+    确有需要保留完整图内标题时，显式传 keep_title=True。
+
+    pdf=True（默认）时，同名另存一份**矢量 PDF**（``xxx.png`` → ``xxx.pdf``），
+    供 LaTeX 直接 \\includegraphics，放大不失真、体积更小；
+    PDF 与 PNG 内容完全一致，仅在打印/嵌入方式上互补。传 pdf=False 可关闭。
+    """
+    if not keep_title:
+        for ax in fig.axes:
+            tag = _panel_tag(ax.get_title())
+            ax.set_title("")
+            if tag:                     # 角标改画左上角，避免被 \caption 挤掉
+                ax.text(0.012, 0.985, tag, transform=ax.transAxes,
+                        ha="left", va="top", fontsize=11, fontweight="bold",
+                        color="0.15", zorder=10)
+        sup = getattr(fig, "_suptitle", None)
+        if sup is not None:
+            sup.set_text("")
     os.makedirs(figdir, exist_ok=True)
     path = os.path.join(figdir, name)
     fig.savefig(path, bbox_inches="tight")
     log(f"    → 已保存 {path}")
+    if pdf:
+        pdfpath = os.path.splitext(path)[0] + ".pdf"
+        # 矢量 PDF：不传 dpi，交由后端按矢量输出；tight 保证与 PNG 同尺寸
+        fig.savefig(pdfpath, bbox_inches="tight")
+        log(f"    → 已保存 {pdfpath}")
     return path
 
 

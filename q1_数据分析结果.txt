@@ -77,8 +77,14 @@
   小区负载 ~ 净负荷      r = -0.706*   p = 5.41e-23
   光伏预测 ~ 净负荷      r = -0.970*   p = 3.23e-89
     → 已保存 figures\q1\fig1_日内曲线_电价_负载_光伏.png
+    → 已保存 figures\q1\fig1_日内曲线_电价_负载_光伏.pdf
     → 已保存 figures\q1\fig2_净负荷曲线.png
+    → 已保存 figures\q1\fig2_净负荷曲线.pdf
     → 已保存 figures\q1\fig3_逐小时均值.png
+    → 已保存 figures\q1\fig3_逐小时均值.pdf
     → 已保存 figures\q1\fig4_相关性热力图.png
+    → 已保存 figures\q1\fig4_相关性热力图.pdf
     → 已保存 figures\q1\fig5_电价持续曲线.png
+    → 已保存 figures\q1\fig5_电价持续曲线.pdf
     → 已保存 figures\q1\fig6_光伏消纳结构.png
+    → 已保存 figures\q1\fig6_光伏消纳结构.pdf
